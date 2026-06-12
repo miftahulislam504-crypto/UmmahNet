@@ -18,29 +18,39 @@ import { useAuthStore } from "@/store/authStore";
 import type { Post, Comment } from "@/types";
 import toast from "react-hot-toast";
 
+type FeedPageParam = QueryDocumentSnapshot | undefined;
+
 // ─── Feed with infinite scroll ────────────────────────────────────────────────
 export function useFeed() {
-  const lastDocRef = useRef<QueryDocumentSnapshot | null>(null);
-
-  return useInfiniteQuery({
+  return useInfiniteQuery<
+    Awaited<ReturnType<typeof getPublicFeed>>,
+    Error,
+    { pages: Awaited<ReturnType<typeof getPublicFeed>>[]; pageParams: FeedPageParam[] },
+    string[],
+    FeedPageParam
+  >({
     queryKey:           ["feed"],
     queryFn:            async ({ pageParam }) => {
-      const result = await getPublicFeed(pageParam as QueryDocumentSnapshot | undefined);
-      lastDocRef.current = result.lastDoc;
-      return result;
+      return await getPublicFeed(pageParam);
     },
-    initialPageParam:   undefined,
+    initialPageParam:   undefined as FeedPageParam,
     getNextPageParam:   (lastPage) => lastPage.lastDoc ?? undefined,
   });
 }
 
 // ─── User posts ───────────────────────────────────────────────────────────────
 export function useUserPosts(uid?: string) {
-  return useInfiniteQuery({
+  return useInfiniteQuery<
+    Awaited<ReturnType<typeof getUserPosts>>,
+    Error,
+    { pages: Awaited<ReturnType<typeof getUserPosts>>[]; pageParams: FeedPageParam[] },
+    (string | undefined)[],
+    FeedPageParam
+  >({
     queryKey:         ["userPosts", uid],
     queryFn:          async ({ pageParam }) =>
-      getUserPosts(uid!, pageParam as QueryDocumentSnapshot | undefined),
-    initialPageParam: undefined,
+      getUserPosts(uid!, pageParam),
+    initialPageParam: undefined as FeedPageParam,
     getNextPageParam: (lastPage) => lastPage.lastDoc ?? undefined,
     enabled:          !!uid,
   });

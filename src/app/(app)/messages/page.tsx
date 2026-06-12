@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams }     from "next/navigation";
 import { MessageCircle }       from "lucide-react";
 import { ConversationList }    from "@/components/chat/ConversationList";
@@ -9,7 +9,7 @@ import { useConversations }    from "@/hooks/useChat";
 import { getOrCreateConversation } from "@/services/chatService";
 import { useAuthStore }        from "@/store/authStore";
 
-export default function MessagesPage() {
+function MessagesContent() {
   const { user }                        = useAuthStore();
   const { convs, loading }              = useConversations();
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
@@ -65,5 +65,13 @@ export default function MessagesPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function MessagesPage() {
+  return (
+    <Suspense fallback={<div className="card p-8 text-center text-gray-500">লোড হচ্ছে...</div>}>
+      <MessagesContent />
+    </Suspense>
   );
 }

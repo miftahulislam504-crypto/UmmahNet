@@ -1,18 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Search, Loader2, Users } from "lucide-react";
 import { searchUsers }  from "@/services/friendService";
 import { UserCard }     from "@/components/friends/UserCard";
 import { useAuthStore } from "@/store/authStore";
+import type { UserProfile } from "@/types";
 
-export default function SearchPage() {
+function SearchContent() {
   const searchParams          = useSearchParams();
   const router                = useRouter();
   const { user }              = useAuthStore();
   const [query, setQuery]     = useState(searchParams.get("q") ?? "");
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -87,5 +88,13 @@ export default function SearchPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<div className="card p-8 text-center text-gray-500">লোড হচ্ছে...</div>}>
+      <SearchContent />
+    </Suspense>
   );
 }

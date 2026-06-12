@@ -5,7 +5,7 @@ import Link          from "next/link";
 import Image         from "next/image";
 import {
   Heart, MessageCircle, Share2, MoreHorizontal,
-  Trash2, Globe, Users, Lock, ChevronDown,
+  Trash2, Globe, Users, Lock,
 } from "lucide-react";
 import { Avatar }       from "@/components/ui/Avatar";
 import { CommentSection } from "@/components/feed/CommentSection";
