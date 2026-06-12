@@ -16,12 +16,30 @@ import {
 import { auth, db, googleProvider } from "@/lib/firebase/config";
 import type { UserProfile } from "@/types";
 
-// Keep session cookie in sync with Firebase token (browser only)
-if (typeof window !== "undefined") {
+// ─── Critical Fix: Session cookie sync ────────────────────────────────────────
+// আগে এই code টা module-level এ ছিল (top-level if block)।
+// Next.js 15 / Vercel-এ server-side module import হওয়ার সময়
+// এই code run হত — `auth` object তখন browser API ছাড়া কাজ করে না,
+// ফলে silent crash হত এবং পুরো app লোড বন্ধ হয়ে যেত।
+//
+// Fix: initSessionSync() একটা explicit function —
+// শুধু browser-এ, client component mount হওয়ার পর call হবে।
+let sessionSyncInitialized = false;
+
+export function initSessionSync(): void {
+  if (typeof window === "undefined") return;
+  if (sessionSyncInitialized) return;
+  sessionSyncInitialized = true;
+
   onIdTokenChanged(auth, async (user) => {
     if (user) {
-      const token = await user.getIdToken();
-      document.cookie = `un_session=${token}; path=/; max-age=3600; SameSite=Strict`;
+      try {
+        const token = await user.getIdToken();
+        document.cookie = `un_session=${token}; path=/; max-age=3600; SameSite=Strict`;
+      } catch {
+        // token fetch ব্যর্থ হলে session clear করো
+        document.cookie = "un_session=; path=/; max-age=0";
+      }
     } else {
       document.cookie = "un_session=; path=/; max-age=0";
     }
