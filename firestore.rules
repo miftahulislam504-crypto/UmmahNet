@@ -15,7 +15,7 @@ service cloud.firestore {
       allow read:   if isAuth();
       allow create: if isOwner(uid);
       allow update: if isOwner(uid);
-      allow delete: if false; // never delete users
+      allow delete: if false;
     }
 
     // ── Posts ─────────────────────────────────────────────────────────────────
@@ -57,21 +57,26 @@ service cloud.firestore {
 
     // ── Friendships ───────────────────────────────────────────────────────────
     match /friendships/{docId} {
-      allow read:   if isAuth();
-      allow write:  if isAuth();
+      allow read:  if isAuth();
+      allow write: if isAuth();
     }
 
     // ── Conversations ─────────────────────────────────────────────────────────
+    // BUG 1 FIX: আগে read, write দুটোতেই resource.data ব্যবহার হত।
+    // কিন্তু create-এর সময় document এখনো exist করে না, তাই resource.data নেই।
+    // create-এ request.resource.data ব্যবহার করতে হয়।
     match /conversations/{convId} {
-      allow read, write: if isAuth() &&
+      allow read, update, delete: if isAuth() &&
         request.auth.uid in resource.data.participants;
+      allow create: if isAuth() &&
+        request.auth.uid in request.resource.data.participants;
     }
 
     // ── Messages ──────────────────────────────────────────────────────────────
     match /messages/{msgId} {
       allow read:   if isAuth();
       allow create: if isAuth() && request.resource.data.senderId == request.auth.uid;
-      allow update: if isAuth(); // for seen status
+      allow update: if isAuth();
     }
 
     // ── Notifications ─────────────────────────────────────────────────────────
@@ -83,7 +88,7 @@ service cloud.firestore {
     // ── Reports ───────────────────────────────────────────────────────────────
     match /reports/{reportId} {
       allow create: if isAuth();
-      allow read:   if false; // admin only
+      allow read:   if false;
     }
   }
 }

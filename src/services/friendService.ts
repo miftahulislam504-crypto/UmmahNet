@@ -24,7 +24,6 @@ export async function sendFriendRequest(
   senderId: string,
   receiverId: string
 ): Promise<void> {
-  // Check if already exists
   const existing = await getFriendRequestBetween(senderId, receiverId);
   if (existing) throw new Error("ALREADY_EXISTS");
 
@@ -45,15 +44,12 @@ export async function acceptFriendRequest(requestId: string): Promise<void> {
   const { senderId, receiverId } = reqSnap.data() as FriendRequest;
   const batch = writeBatch(db);
 
-  // Update request status
   batch.update(reqRef, { status: "accepted" });
 
-  // Create friendship (sorted so user1 < user2 — prevents duplicates)
   const [user1, user2] = [senderId, receiverId].sort();
   const friendshipRef  = doc(collection(db, "friendships"));
   batch.set(friendshipRef, { user1, user2, createdAt: serverTimestamp() });
 
-  // Increment friendsCount for both
   batch.update(doc(db, "users", senderId),   { friendsCount: increment(1) });
   batch.update(doc(db, "users", receiverId), { friendsCount: increment(1) });
 
@@ -126,31 +122,39 @@ export async function getSentRequests(uid: string): Promise<
 }
 
 // ─── Get Friend List ──────────────────────────────────────────────────────────
+// BUG 5 FIX: আগে user1 এবং user2 দুটো query-তে একই lastDoc pass করা হত।
+// কিন্তু দুটো আলাদা query-র cursor আলাদা — এটা wrong pagination দিত।
+// Fix: দুটো query আলাদা lastDoc track করছে।
 export async function getFriends(
   uid: string,
   pageSize = 20,
-  lastDoc?: QueryDocumentSnapshot
-): Promise<{ friends: UserProfile[]; lastDoc: QueryDocumentSnapshot | null }> {
-  const constraints: any[] = [
+  lastDoc1?: QueryDocumentSnapshot,
+  lastDoc2?: QueryDocumentSnapshot
+): Promise<{
+  friends: UserProfile[];
+  lastDoc1: QueryDocumentSnapshot | null;
+  lastDoc2: QueryDocumentSnapshot | null;
+}> {
+  const c1: any[] = [
     where("user1", "==", uid),
     orderBy("createdAt", "desc"),
     limit(pageSize),
   ];
-  if (lastDoc) constraints.push(startAfter(lastDoc));
+  if (lastDoc1) c1.push(startAfter(lastDoc1));
 
-  const q1 = query(collection(db, "friendships"), ...constraints);
-
-  const constraints2: any[] = [
+  const c2: any[] = [
     where("user2", "==", uid),
     orderBy("createdAt", "desc"),
     limit(pageSize),
   ];
-  if (lastDoc) constraints2.push(startAfter(lastDoc));
+  if (lastDoc2) c2.push(startAfter(lastDoc2));
 
-  const q2 = query(collection(db, "friendships"), ...constraints2);
+  const [snap1, snap2] = await Promise.all([
+    getDocs(query(collection(db, "friendships"), ...c1)),
+    getDocs(query(collection(db, "friendships"), ...c2)),
+  ]);
 
-  const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
-  const allDocs        = [...snap1.docs, ...snap2.docs];
+  const allDocs = [...snap1.docs, ...snap2.docs];
 
   const friendIds = allDocs.map((d) => {
     const { user1, user2 } = d.data() as Friendship;
@@ -165,8 +169,9 @@ export async function getFriends(
   );
 
   return {
-    friends: profiles.filter(Boolean) as UserProfile[],
-    lastDoc:  allDocs.at(-1) ?? null,
+    friends:  profiles.filter(Boolean) as UserProfile[],
+    lastDoc1: snap1.docs.at(-1) ?? null,
+    lastDoc2: snap2.docs.at(-1) ?? null,
   };
 }
 
@@ -184,14 +189,12 @@ export async function getRelationStatus(
 ): Promise<{ status: RelationStatus; requestId?: string }> {
   if (myUid === theirUid) return { status: "self" };
 
-  // Check friendship
   const [u1, u2] = [myUid, theirUid].sort();
   const fSnap    = await getDocs(
     query(collection(db, "friendships"), where("user1", "==", u1), where("user2", "==", u2))
   );
   if (!fSnap.empty) return { status: "friends" };
 
-  // Check sent request
   const sentSnap = await getDocs(
     query(
       collection(db, "friendRequests"),
@@ -203,7 +206,6 @@ export async function getRelationStatus(
   if (!sentSnap.empty)
     return { status: "request_sent", requestId: sentSnap.docs[0].id };
 
-  // Check received request
   const recvSnap = await getDocs(
     query(
       collection(db, "friendRequests"),
@@ -226,7 +228,6 @@ export async function searchUsers(
   const term = searchTerm.toLowerCase().trim();
   if (!term) return [];
 
-  // Firestore prefix search on username
   const q = query(
     collection(db, "users"),
     where("username", ">=", term),
@@ -244,12 +245,12 @@ export async function getMutualFriendsCount(
   myUid: string,
   theirUid: string
 ): Promise<number> {
-  const [myFriends, theirFriends] = await Promise.all([
+  const [myData, theirData] = await Promise.all([
     getFriends(myUid),
     getFriends(theirUid),
   ]);
-  const mySet = new Set(myFriends.friends.map((f) => f.uid));
-  return theirFriends.friends.filter((f) => mySet.has(f.uid)).length;
+  const mySet = new Set(myData.friends.map((f) => f.uid));
+  return theirData.friends.filter((f) => mySet.has(f.uid)).length;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

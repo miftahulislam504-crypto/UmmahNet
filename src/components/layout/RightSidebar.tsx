@@ -1,17 +1,50 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { collection, getDocs, query, where, limit, orderBy } from "firebase/firestore";
+import { db } from "@/lib/firebase/config";
 import { Avatar }       from "@/components/ui/Avatar";
 import { FriendButton } from "@/components/friends/FriendButton";
+import { useAuthStore } from "@/store/authStore";
+import type { UserProfile } from "@/types";
 
-// Placeholder — Phase 2 real suggested friends আসবে Firestore থেকে
-const suggested = [
-  { uid: "1", displayName: "Rahim Uddin",   username: "rahim",  photoURL: "" },
-  { uid: "2", displayName: "Fatema Begum",  username: "fatema", photoURL: "" },
-  { uid: "3", displayName: "Karim Hossain", username: "karim",  photoURL: "" },
-];
-
+// BUG 4 FIX: আগে hardcoded fake UID ("1", "2", "3") ছিল।
+// এটা প্রতিটি page load-এ failed Firestore queries তৈরি করত।
+// এখন real users Firestore থেকে fetch করা হচ্ছে।
 export function RightSidebar() {
+  const { user }                          = useAuthStore();
+  const [suggested, setSuggested]         = useState<UserProfile[]>([]);
+  const [loading,   setLoading]           = useState(true);
+
+  useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    async function fetchSuggested() {
+      try {
+        // নিজেকে বাদ দিয়ে সাম্প্রতিক ব্যবহারকারীরা দেখাও
+        const q    = query(
+          collection(db, "users"),
+          where("uid", "!=", user!.uid),
+          orderBy("uid"),
+          limit(5)
+        );
+        const snap = await getDocs(q);
+        setSuggested(snap.docs.map((d) => d.data() as UserProfile));
+      } catch {
+        // Silently fail — sidebar non-critical
+        setSuggested([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchSuggested();
+  }, [user]);
+
   return (
     <aside className="hidden xl:flex flex-col gap-4 w-64 sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto pb-6">
 
@@ -20,23 +53,47 @@ export function RightSidebar() {
         <h3 className="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-3">
           পরিচিত হতে পারেন
         </h3>
-        <div className="flex flex-col gap-3">
-          {suggested.map((person) => (
-            <div key={person.uid} className="flex items-center gap-2">
-              <Avatar src={person.photoURL} name={person.displayName} size="sm" />
-              <div className="flex-1 min-w-0">
-                <Link
-                  href={`/profile/${person.uid}`}
-                  className="text-sm font-medium text-gray-900 dark:text-white hover:underline truncate block"
-                >
-                  {person.displayName}
-                </Link>
-                <p className="text-xs text-gray-500">@{person.username}</p>
+
+        {loading && (
+          <div className="flex flex-col gap-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-2 animate-pulse">
+                <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
+                <div className="flex-1">
+                  <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-1" />
+                  <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
+                </div>
               </div>
-              <FriendButton theirUid={person.uid} size="sm" />
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
+
+        {!loading && suggested.length === 0 && (
+          <p className="text-xs text-gray-400 text-center py-2">
+            এখনো কোনো সাজেশন নেই
+          </p>
+        )}
+
+        {!loading && suggested.length > 0 && (
+          <div className="flex flex-col gap-3">
+            {suggested.map((person) => (
+              <div key={person.uid} className="flex items-center gap-2">
+                <Avatar src={person.photoURL} name={person.displayName} size="sm" />
+                <div className="flex-1 min-w-0">
+                  <Link
+                    href={`/profile/${person.uid}`}
+                    className="text-sm font-medium text-gray-900 dark:text-white hover:underline truncate block"
+                  >
+                    {person.displayName}
+                  </Link>
+                  <p className="text-xs text-gray-500">@{person.username}</p>
+                </div>
+                <FriendButton theirUid={person.uid} size="sm" />
+              </div>
+            ))}
+          </div>
+        )}
+
         <Link
           href="/friends"
           className="mt-3 block text-center text-xs text-primary-600 hover:underline font-medium"

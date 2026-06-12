@@ -20,8 +20,8 @@ import type { Conversation, Message } from "@/types";
 
 // ─── Get or create private conversation ──────────────────────────────────────
 export async function getOrCreateConversation(
-  myUid:     string,
-  theirUid:  string
+  myUid:    string,
+  theirUid: string
 ): Promise<string> {
   const participants = [myUid, theirUid].sort();
 
@@ -83,6 +83,10 @@ export async function sendMessage(
 }
 
 // ─── Mark messages as seen ────────────────────────────────────────────────────
+// BUG 2 FIX: আগে "senderId", "!=", myUid ব্যবহার হত।
+// != অপারেটর + compound query-র জন্য আলাদা Firestore index দরকার হয়,
+// যেটা indexes.json-এ ছিল না — production-এ silent crash করত।
+// Fix: "!=" বাদ দিয়ে client-side filter করা হচ্ছে।
 export async function markAsSeen(
   conversationId: string,
   myUid:          string
@@ -91,14 +95,17 @@ export async function markAsSeen(
     collection(db, "messages"),
     where("conversationId", "==", conversationId),
     where("seen",           "==", false),
-    where("senderId",       "!=", myUid),
     limit(50)
   );
   const snap = await getDocs(q);
   if (snap.empty) return;
 
+  // Client-side filter: শুধু অন্যজনের unseen message mark করো
+  const toMark = snap.docs.filter((d) => d.data().senderId !== myUid);
+  if (toMark.length === 0) return;
+
   const batch = writeBatch(db);
-  snap.docs.forEach((d) =>
+  toMark.forEach((d) =>
     batch.update(d.ref, { seen: true, seenAt: serverTimestamp() })
   );
   await batch.commit();

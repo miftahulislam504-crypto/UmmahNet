@@ -55,8 +55,12 @@ export function useFriendActions(theirUid: string) {
 
   const reject = useMutation({
     mutationFn: (requestId: string) => rejectFriendRequest(requestId),
-    onSuccess:  () => { toast.success("অনুরোধ প্রত্যাখ্যান করা হয়েছে"); invalidate(); qc.invalidateQueries({ queryKey: ["pendingRequests"] }); },
-    onError:    () => toast.error("ব্যর্থ হয়েছে"),
+    onSuccess:  () => {
+      toast.success("অনুরোধ প্রত্যাখ্যান করা হয়েছে");
+      invalidate();
+      qc.invalidateQueries({ queryKey: ["pendingRequests"] });
+    },
+    onError: () => toast.error("ব্যর্থ হয়েছে"),
   });
 
   const cancel = useMutation({
@@ -89,6 +93,8 @@ export function usePendingRequests() {
 }
 
 // ─── Friends list ─────────────────────────────────────────────────────────────
+// BUG 5 FIX: getFriends এখন lastDoc1, lastDoc2 আলাদা নেয়।
+// প্রথম page load-এ undefined পাঠানো হচ্ছে যা সঠিক।
 export function useFriends(uid?: string) {
   const { user } = useAuthStore();
   const targetUid = uid ?? user?.uid;
@@ -97,6 +103,7 @@ export function useFriends(uid?: string) {
     queryKey: ["friends", targetUid],
     queryFn:  () => getFriends(targetUid!),
     enabled:  !!targetUid,
+    select:   (data) => data, // data.friends, data.lastDoc1, data.lastDoc2
   });
 }
 
@@ -117,7 +124,7 @@ export function useUserSearch() {
       } finally {
         setLoading(false);
       }
-    }, 400); // debounce
+    }, 400);
     return () => clearTimeout(timer);
   }, [term, user]);
 

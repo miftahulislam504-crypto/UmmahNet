@@ -1,10 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // BUG 7 FIX: ignoreBuildErrors ছিল true — এটা TypeScript error লুকিয়ে রাখত,
+  // Vercel-এ runtime crash হত কিন্তু build log-এ কিছু দেখাত না।
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   images: {
     remotePatterns: [

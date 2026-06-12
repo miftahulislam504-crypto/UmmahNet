@@ -7,7 +7,6 @@ import {
   sendMessage,
   markAsSeen,
   getOrCreateConversation,
-  getOtherParticipant,
 } from "@/services/chatService";
 import { useAuthStore }  from "@/store/authStore";
 import type { Conversation, Message } from "@/types";
@@ -44,10 +43,21 @@ export function useMessages(conversationId: string) {
     const unsub = subscribeToMessages(conversationId, (msgs) => {
       setMessages(msgs);
       setLoading(false);
-      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
     });
     return () => unsub();
   }, [conversationId]);
+
+  // BUG 6 FIX: আগে 50ms timeout দিয়ে scroll করা হত।
+  // Vercel production-এ cold start slow হওয়ায় scroll miss হত।
+  // Fix: messages change হলে useEffect দিয়ে scroll করা হচ্ছে,
+  // এবং timeout 200ms করা হয়েছে যেন DOM render শেষ হয়।
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const timer = setTimeout(() => {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [messages.length]);
 
   // Mark as seen when messages arrive
   useEffect(() => {
