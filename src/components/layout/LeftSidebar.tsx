@@ -11,12 +11,12 @@ import { useAuthStore } from "@/store/authStore";
 import { cn } from "@/lib/utils";
 
 const links = [
-  { href: "/",           icon: Home,          label: "নিউজফিড" },
-  { href: "/friends",    icon: Users,          label: "বন্ধু" },
-  { href: "/messages",   icon: MessageCircle,  label: "মেসেজ" },
-  { href: "/notifications", icon: Bell,        label: "নোটিফিকেশন" },
-  { href: "/saved",      icon: Bookmark,       label: "সেভ করা পোস্ট" },
-  { href: "/settings",   icon: Settings,       label: "সেটিংস" },
+  { href: "/",           icon: Home,          label: "Home" },
+  { href: "/friends",    icon: Users,          label: "Friends" },
+  { href: "/messages",   icon: MessageCircle,  label: "Messages" },
+  { href: "/notifications", icon: Bell,        label: "Notifications" },
+  { href: "/saved",      icon: Bookmark,       label: "Saved posts" },
+  { href: "/settings",   icon: Settings,       label: "Settings" },
 ];
 
 export function LeftSidebar() {

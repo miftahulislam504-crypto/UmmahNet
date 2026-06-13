@@ -28,9 +28,9 @@ export default function AdminReportsPage() {
       await resolveReport(reportId, action);
       if (deletePost && targetId) await adminDeletePost(targetId);
       setReports((prev) => prev.filter((r) => r.id !== reportId));
-      toast.success(action === "resolved" ? "রিপোর্ট সমাধান হয়েছে" : "রিপোর্ট বাতিল করা হয়েছে");
+      toast.success(action === "resolved" ? "Report resolved" : "Report dismissed");
     } catch {
-      toast.error("ব্যর্থ হয়েছে");
+      toast.error("Action failed");
     } finally {
       setActing(null);
     }
@@ -39,8 +39,8 @@ export default function AdminReportsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">রিপোর্ট পর্যালোচনা</h1>
-        <p className="text-sm text-gray-500 mt-0.5">{reports.length}টি অপেক্ষারত রিপোর্ট</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Report Review</h1>
+        <p className="text-sm text-gray-500 mt-0.5">{reports.length} pending report{reports.length !== 1 ? "s" : ""}</p>
       </div>
 
       {loading && (
@@ -52,7 +52,7 @@ export default function AdminReportsPage() {
       {!loading && reports.length === 0 && (
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-14 text-center">
           <Flag className="w-8 h-8 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">কোনো অপেক্ষারত রিপোর্ট নেই</p>
+          <p className="text-gray-500 text-sm">No pending reports</p>
         </div>
       )}
 
@@ -64,7 +64,7 @@ export default function AdminReportsPage() {
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400
                                    px-2.5 py-1 rounded-full font-medium capitalize">
-                    {r.targetType === "post" ? "পোস্ট" : r.targetType === "user" ? "ব্যবহারকারী" : "মন্তব্য"}
+                    {r.targetType === "post" ? "Post" : r.targetType === "user" ? "User" : "Comment"}
                   </span>
                   <span className="text-xs text-gray-400">
                     {formatDate((r.createdAt as any)?.toDate?.() ?? new Date())}
@@ -97,7 +97,7 @@ export default function AdminReportsPage() {
                                dark:hover:bg-red-900/30 transition-colors"
                   >
                     {acting === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                    পোস্ট মুছুন
+                    Delete post
                   </button>
                 )}
 
@@ -109,7 +109,7 @@ export default function AdminReportsPage() {
                              text-green-600 bg-green-50 dark:bg-green-900/20 hover:bg-green-100
                              dark:hover:bg-green-900/30 transition-colors"
                 >
-                  <CheckCircle className="w-3.5 h-3.5" />সমাধান
+                  <CheckCircle className="w-3.5 h-3.5" />Resolve
                 </button>
 
                 {/* Dismiss */}
@@ -120,7 +120,7 @@ export default function AdminReportsPage() {
                              text-gray-500 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200
                              dark:hover:bg-gray-700 transition-colors"
                 >
-                  <XCircle className="w-3.5 h-3.5" />বাতিল
+                  <XCircle className="w-3.5 h-3.5" />Dismiss
                 </button>
               </div>
             </div>

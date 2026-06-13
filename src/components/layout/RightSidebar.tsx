@@ -9,9 +9,9 @@ import { FriendButton } from "@/components/friends/FriendButton";
 import { useAuthStore } from "@/store/authStore";
 import type { UserProfile } from "@/types";
 
-// BUG 4 FIX: আগে hardcoded fake UID ("1", "2", "3") ছিল।
-// এটা প্রতিটি page load-এ failed Firestore queries তৈরি করত।
-// এখন real users Firestore থেকে fetch করা হচ্ছে।
+// BUG 4 FIX: previously a hardcoded fake UID ("1", "2", "3") was used.
+// This caused failed Firestore queries on every page load.
+// Now real users are fetched from Firestore.
 export function RightSidebar() {
   const { user }                          = useAuthStore();
   const [suggested, setSuggested]         = useState<UserProfile[]>([]);
@@ -25,7 +25,7 @@ export function RightSidebar() {
 
     async function fetchSuggested() {
       try {
-        // নিজেকে বাদ দিয়ে সাম্প্রতিক ব্যবহারকারীরা দেখাও
+        // Show recent users, excluding self
         const q    = query(
           collection(db, "users"),
           where("uid", "!=", user!.uid),
@@ -51,7 +51,7 @@ export function RightSidebar() {
       {/* Suggested Friends */}
       <div className="card p-4">
         <h3 className="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-3">
-          পরিচিত হতে পারেন
+          People you may know
         </h3>
 
         {loading && (
@@ -70,7 +70,7 @@ export function RightSidebar() {
 
         {!loading && suggested.length === 0 && (
           <p className="text-xs text-gray-400 text-center py-2">
-            এখনো কোনো সাজেশন নেই
+            No suggestions yet
           </p>
         )}
 
@@ -98,18 +98,18 @@ export function RightSidebar() {
           href="/friends"
           className="mt-3 block text-center text-xs text-primary-600 hover:underline font-medium"
         >
-          আরও দেখুন
+          See more
         </Link>
       </div>
 
       {/* Footer links */}
       <div className="px-2">
         <p className="text-xs text-gray-400 dark:text-gray-600 leading-relaxed">
-          <Link href="/about"   className="hover:underline">সম্পর্কে</Link>
+          <Link href="/about"   className="hover:underline">About</Link>
           {" · "}
-          <Link href="/privacy" className="hover:underline">গোপনীয়তা</Link>
+          <Link href="/privacy" className="hover:underline">Privacy</Link>
           {" · "}
-          <Link href="/terms"   className="hover:underline">শর্তাবলী</Link>
+          <Link href="/terms"   className="hover:underline">Terms</Link>
         </p>
         <p className="text-xs text-gray-400 dark:text-gray-600 mt-1">
           © 2025 UmmahNet

@@ -9,13 +9,13 @@ import { cn }       from "@/lib/utils";
 import toast        from "react-hot-toast";
 
 const REASONS = [
-  "স্প্যাম বা বিজ্ঞাপন",
-  "মিথ্যা তথ্য",
-  "হয়রানি বা বুলিং",
-  "ঘৃণামূলক বক্তব্য",
-  "যৌন বা অশ্লীল কন্টেন্ট",
-  "সহিংসতা",
-  "অন্যান্য",
+  "Spam or advertising",
+  "False information",
+  "Harassment or bullying",
+  "Hate speech",
+  "Sexual or explicit content",
+  "Violence",
+  "Other",
 ];
 
 interface Props {
@@ -34,10 +34,10 @@ export function ReportModal({ targetId, targetType, onClose }: Props) {
     setLoading(true);
     try {
       await reportContent({ reporterId: user.uid, targetId, targetType, reason });
-      toast.success("রিপোর্ট পাঠানো হয়েছে। ধন্যবাদ।");
+      toast.success("Report submitted. Thank you.");
       onClose();
     } catch {
-      toast.error("রিপোর্ট পাঠাতে ব্যর্থ হয়েছে");
+      toast.error("Failed to submit report");
     } finally {
       setLoading(false);
     }
@@ -48,14 +48,14 @@ export function ReportModal({ targetId, targetType, onClose }: Props) {
       <div className="card w-full max-w-sm p-6 shadow-2xl">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <Flag className="w-5 h-5 text-red-500" />রিপোর্ট করুন
+            <Flag className="w-5 h-5 text-red-500" />Report
           </h2>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <p className="text-sm text-gray-500 mb-4">সমস্যাটি কী?</p>
+        <p className="text-sm text-gray-500 mb-4">What is the issue?</p>
 
         <div className="flex flex-col gap-2 mb-6">
           {REASONS.map((r) => (
@@ -75,7 +75,7 @@ export function ReportModal({ targetId, targetType, onClose }: Props) {
         </div>
 
         <div className="flex gap-3">
-          <Button variant="outline" onClick={onClose} className="flex-1 justify-center">বাতিল</Button>
+          <Button variant="outline" onClick={onClose} className="flex-1 justify-center">Cancel</Button>
           <Button
             variant="danger"
             loading={loading}
@@ -83,7 +83,7 @@ export function ReportModal({ targetId, targetType, onClose }: Props) {
             onClick={handleSubmit}
             className="flex-1 justify-center"
           >
-            রিপোর্ট পাঠান
+            Submit report
           </Button>
         </div>
       </div>

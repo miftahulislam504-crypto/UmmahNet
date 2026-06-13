@@ -8,9 +8,9 @@ import { initSessionSync } from "@/services/authService";
 
 function AuthInit({ children }: { children: React.ReactNode }) {
   // ─── Critical Fix ─────────────────────────────────────────────────────────
-  // initSessionSync() এখানে call করা হচ্ছে — এটা একটা "use client" component,
-  // তাই browser-এ mount হওয়ার পরই চলবে।
-  // আগে authService.ts-এ top-level এ ছিল, SSR-এ crash করত।
+  // initSessionSync() is called here — this is a "use client" component,
+  // so it only runs after mounting in the browser.
+  // Previously it was top-level in authService.ts, which crashed during SSR.
   useEffect(() => {
     initSessionSync();
   }, []);

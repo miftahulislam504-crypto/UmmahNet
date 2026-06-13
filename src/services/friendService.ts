@@ -122,9 +122,9 @@ export async function getSentRequests(uid: string): Promise<
 }
 
 // ─── Get Friend List ──────────────────────────────────────────────────────────
-// BUG 5 FIX: আগে user1 এবং user2 দুটো query-তে একই lastDoc pass করা হত।
-// কিন্তু দুটো আলাদা query-র cursor আলাদা — এটা wrong pagination দিত।
-// Fix: দুটো query আলাদা lastDoc track করছে।
+// BUG 5 FIX: previously the same lastDoc was passed to both the user1 and user2 queries.
+// But each query has its own cursor — this caused incorrect pagination.
+// Fix: each query now tracks its own lastDoc.
 export async function getFriends(
   uid: string,
   pageSize = 20,

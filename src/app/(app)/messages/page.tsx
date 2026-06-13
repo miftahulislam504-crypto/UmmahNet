@@ -55,10 +55,10 @@ function MessagesContent() {
                 <MessageCircle className="w-10 h-10 text-primary-600" />
               </div>
               <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
-                মেসেজ শুরু করুন
+                Start a conversation
               </h3>
               <p className="text-sm text-gray-500">
-                বাম দিক থেকে কথোপকথন বেছে নিন
+                Select a conversation on the left
               </p>
             </div>
           )}
@@ -70,7 +70,7 @@ function MessagesContent() {
 
 export default function MessagesPage() {
   return (
-    <Suspense fallback={<div className="card p-8 text-center text-gray-500">লোড হচ্ছে...</div>}>
+    <Suspense fallback={<div className="card p-8 text-center text-gray-500">Loading...</div>}>
       <MessagesContent />
     </Suspense>
   );

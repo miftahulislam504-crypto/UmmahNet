@@ -33,24 +33,24 @@ export default function RegisterPage() {
     handleGoogleRedirectResult()
       .then(async (user) => {
         if (user) {
-          toast.success("স্বাগতম!");
+          toast.success("Welcome!");
           await waitForSessionCookie();
           router.push("/");
         }
       })
-      .catch(() => toast.error("Google লগইন ব্যর্থ হয়েছে"))
+      .catch(() => toast.error("Google sign-in failed"))
       .finally(() => setGLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function validate() {
     const e: Record<string, string> = {};
-    if (!form.displayName.trim()) e.displayName = "নাম দিন";
-    if (!form.username.trim())    e.username    = "ইউজারনেম দিন";
+    if (!form.displayName.trim()) e.displayName = "Please enter your name";
+    if (!form.username.trim())    e.username    = "Please enter a username";
     if (!/^[a-z0-9_]+$/.test(form.username))
-      e.username = "শুধু a-z, 0-9, _ ব্যবহার করুন";
-    if (!form.email.trim())       e.email    = "ইমেইল দিন";
-    if (form.password.length < 6) e.password = "পাসওয়ার্ড কমপক্ষে ৬ অক্ষর";
-    if (form.password !== form.confirm) e.confirm = "পাসওয়ার্ড মিলছে না";
+      e.username = "Use only a-z, 0-9, _";
+    if (!form.email.trim())       e.email    = "Please enter your email";
+    if (form.password.length < 6) e.password = "Password must be at least 6 characters";
+    if (form.password !== form.confirm) e.confirm = "Passwords do not match";
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -62,14 +62,14 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       await registerWithEmail(form.email, form.password, form.displayName, form.username);
-      toast.success("অ্যাকাউন্ট তৈরি হয়েছে! স্বাগতম 🎉");
+      toast.success("Account created! Welcome 🎉");
       await waitForSessionCookie();
       router.push("/");
     } catch (err: any) {
       const msg =
         err.code === "auth/email-already-in-use"
-          ? "এই ইমেইল দিয়ে আগেই অ্যাকাউন্ট আছে"
-          : "অ্যাকাউন্ট তৈরি ব্যর্থ হয়েছে";
+          ? "An account with this email already exists"
+          : "Failed to create account";
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -80,13 +80,13 @@ export default function RegisterPage() {
     setGLoading(true);
     try {
       await loginWithGoogle();
-      // Desktop popup সফল হলে
-      toast.success("স্বাগতম!");
+      // Reached on successful desktop popup
+      toast.success("Welcome!");
       await waitForSessionCookie();
       router.push("/");
     } catch (err: any) {
       if (err?.code !== "auth/popup-closed-by-user") {
-        toast.error("Google লগইন ব্যর্থ হয়েছে");
+        toast.error("Google sign-in failed");
       }
       setGLoading(false);
     }
@@ -97,20 +97,20 @@ export default function RegisterPage() {
 
   return (
     <>
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">অ্যাকাউন্ট খুলুন</h2>
-      <p className="text-sm text-gray-500 mb-6">UmmahNet-এ যোগ দিন</p>
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Create an account</h2>
+      <p className="text-sm text-gray-500 mb-6">Join UmmahNet</p>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
         <Input
-          label="পুরো নাম"
-          placeholder="আপনার নাম"
+          label="Full name"
+          placeholder="Your name"
           leftIcon={<User className="w-4 h-4" />}
           value={form.displayName}
           onChange={set("displayName")}
           error={errors.displayName}
         />
         <Input
-          label="ইউজারনেম"
+          label="Username"
           placeholder="username (a-z, 0-9, _)"
           leftIcon={<AtSign className="w-4 h-4" />}
           value={form.username}
@@ -118,7 +118,7 @@ export default function RegisterPage() {
           error={errors.username}
         />
         <Input
-          label="ইমেইল"
+          label="Email"
           type="email"
           placeholder="name@email.com"
           leftIcon={<Mail className="w-4 h-4" />}
@@ -127,18 +127,18 @@ export default function RegisterPage() {
           error={errors.email}
         />
         <Input
-          label="পাসওয়ার্ড"
+          label="Password"
           type="password"
-          placeholder="কমপক্ষে ৬ অক্ষর"
+          placeholder="At least 6 characters"
           leftIcon={<Lock className="w-4 h-4" />}
           value={form.password}
           onChange={set("password")}
           error={errors.password}
         />
         <Input
-          label="পাসওয়ার্ড নিশ্চিত করুন"
+          label="Confirm password"
           type="password"
-          placeholder="আবার পাসওয়ার্ড দিন"
+          placeholder="Re-enter your password"
           leftIcon={<Lock className="w-4 h-4" />}
           value={form.confirm}
           onChange={set("confirm")}
@@ -146,13 +146,13 @@ export default function RegisterPage() {
         />
 
         <Button type="submit" loading={loading} className="w-full justify-center mt-1">
-          অ্যাকাউন্ট তৈরি করুন
+          Create account
         </Button>
       </form>
 
       <div className="flex items-center gap-3 my-4">
         <hr className="flex-1 border-gray-200 dark:border-gray-700" />
-        <span className="text-xs text-gray-400">অথবা</span>
+        <span className="text-xs text-gray-400">or</span>
         <hr className="flex-1 border-gray-200 dark:border-gray-700" />
       </div>
 
@@ -165,7 +165,7 @@ export default function RegisterPage() {
                    disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {gLoading ? (
-          <span className="text-gray-500">লোড হচ্ছে...</span>
+          <span className="text-gray-500">Loading...</span>
         ) : (
           <>
             <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -174,15 +174,15 @@ export default function RegisterPage() {
               <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
               <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
             </svg>
-            Google দিয়ে যোগ দিন
+            Continue with Google
           </>
         )}
       </button>
 
       <p className="text-center text-sm text-gray-500 mt-6">
-        আগে থেকেই অ্যাকাউন্ট আছে?{" "}
+        Already have an account?{" "}
         <Link href="/login" className="text-primary-600 font-semibold hover:underline">
-          লগইন করুন
+          Log in
         </Link>
       </p>
     </>

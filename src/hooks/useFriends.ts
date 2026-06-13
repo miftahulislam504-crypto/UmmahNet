@@ -38,45 +38,45 @@ export function useFriendActions(theirUid: string) {
 
   const send = useMutation({
     mutationFn: () => sendFriendRequest(user!.uid, theirUid),
-    onSuccess:  () => { toast.success("বন্ধু অনুরোধ পাঠানো হয়েছে"); invalidate(); },
-    onError:    () => toast.error("অনুরোধ পাঠাতে ব্যর্থ হয়েছে"),
+    onSuccess:  () => { toast.success("Friend request sent"); invalidate(); },
+    onError:    () => toast.error("Failed to send request"),
   });
 
   const accept = useMutation({
     mutationFn: (requestId: string) => acceptFriendRequest(requestId),
     onSuccess:  () => {
-      toast.success("বন্ধু অনুরোধ গ্রহণ করা হয়েছে 🎉");
+      toast.success("Friend request accepted 🎉");
       invalidate();
       qc.invalidateQueries({ queryKey: ["pendingRequests"] });
       qc.invalidateQueries({ queryKey: ["friends"] });
     },
-    onError: () => toast.error("গ্রহণ করতে ব্যর্থ হয়েছে"),
+    onError: () => toast.error("Failed to accept"),
   });
 
   const reject = useMutation({
     mutationFn: (requestId: string) => rejectFriendRequest(requestId),
     onSuccess:  () => {
-      toast.success("অনুরোধ প্রত্যাখ্যান করা হয়েছে");
+      toast.success("Request declined");
       invalidate();
       qc.invalidateQueries({ queryKey: ["pendingRequests"] });
     },
-    onError: () => toast.error("ব্যর্থ হয়েছে"),
+    onError: () => toast.error("Failed"),
   });
 
   const cancel = useMutation({
     mutationFn: (requestId: string) => cancelFriendRequest(requestId),
-    onSuccess:  () => { toast.success("অনুরোধ বাতিল করা হয়েছে"); invalidate(); },
-    onError:    () => toast.error("বাতিল করতে ব্যর্থ হয়েছে"),
+    onSuccess:  () => { toast.success("Request cancelled"); invalidate(); },
+    onError:    () => toast.error("Failed to cancel"),
   });
 
   const remove = useMutation({
     mutationFn: () => unfriend(user!.uid, theirUid),
     onSuccess:  () => {
-      toast.success("বন্ধু তালিকা থেকে সরানো হয়েছে");
+      toast.success("Removed from friends");
       invalidate();
       qc.invalidateQueries({ queryKey: ["friends"] });
     },
-    onError: () => toast.error("সরাতে ব্যর্থ হয়েছে"),
+    onError: () => toast.error("Failed to remove"),
   });
 
   return { send, accept, reject, cancel, remove };
@@ -93,8 +93,8 @@ export function usePendingRequests() {
 }
 
 // ─── Friends list ─────────────────────────────────────────────────────────────
-// BUG 5 FIX: getFriends এখন lastDoc1, lastDoc2 আলাদা নেয়।
-// প্রথম page load-এ undefined পাঠানো হচ্ছে যা সঠিক।
+// BUG 5 FIX: getFriends now takes lastDoc1 and lastDoc2 separately.
+// On the first page load, undefined is passed, which is correct.
 export function useFriends(uid?: string) {
   const { user } = useAuthStore();
   const targetUid = uid ?? user?.uid;

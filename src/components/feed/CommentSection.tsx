@@ -32,7 +32,7 @@ export function CommentSection({ postId }: Props) {
             <input
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="মন্তব্য করুন..."
+              placeholder="Write a comment..."
               className="flex-1 bg-transparent text-sm outline-none text-gray-900 dark:text-white placeholder-gray-400"
             />
             <button
@@ -86,7 +86,7 @@ export function CommentSection({ postId }: Props) {
         })}
         {comments.length === 0 && (
           <p className="text-xs text-gray-400 text-center py-2">
-            প্রথম মন্তব্য করুন
+            Be the first to comment
           </p>
         )}
       </div>

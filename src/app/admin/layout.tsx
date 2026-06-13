@@ -14,11 +14,11 @@ import { logout } from "@/services/authService";
 import toast      from "react-hot-toast";
 
 const navItems = [
-  { href: "/admin",          label: "ড্যাশবোর্ড",  icon: LayoutDashboard },
-  { href: "/admin/users",    label: "ব্যবহারকারী", icon: Users           },
-  { href: "/admin/reports",  label: "রিপোর্ট",     icon: Flag            },
-  { href: "/admin/posts",    label: "পোস্ট",        icon: FileText        },
-  { href: "/admin/settings", label: "সেটিংস",      icon: Settings        },
+  { href: "/admin",          label: "Dashboard",  icon: LayoutDashboard },
+  { href: "/admin/users",    label: "Users", icon: Users           },
+  { href: "/admin/reports",  label: "Reports",     icon: Flag            },
+  { href: "/admin/posts",    label: "Posts",       icon: FileText        },
+  { href: "/admin/settings", label: "Settings",      icon: Settings        },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -38,7 +38,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   async function handleLogout() {
     await logout();
-    toast.success("লগ আউট হয়েছে");
+    toast.success("Logged out");
     router.push("/login");
   }
 
@@ -93,7 +93,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm
                        font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
           >
-            <LogOut className="w-4 h-4" />লগ আউট
+            <LogOut className="w-4 h-4" />Log out
           </button>
         </div>
       </aside>

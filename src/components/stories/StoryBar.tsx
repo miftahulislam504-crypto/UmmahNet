@@ -61,7 +61,7 @@ export function StoryBar() {
               )}
             </button>
             <span className="text-xs text-gray-600 dark:text-gray-400 text-center leading-tight">
-              আপনার স্টোরি
+              Your story
             </span>
           </div>
           <input ref={fileRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFile} />

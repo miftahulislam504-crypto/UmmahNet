@@ -47,10 +47,10 @@ export function useMessages(conversationId: string) {
     return () => unsub();
   }, [conversationId]);
 
-  // BUG 6 FIX: আগে 50ms timeout দিয়ে scroll করা হত।
-  // Vercel production-এ cold start slow হওয়ায় scroll miss হত।
-  // Fix: messages change হলে useEffect দিয়ে scroll করা হচ্ছে,
-  // এবং timeout 200ms করা হয়েছে যেন DOM render শেষ হয়।
+  // BUG 6 FIX: previously scrolled using a 50ms timeout.
+  // On Vercel production, slow cold starts caused the scroll to be missed.
+  // Fix: now scrolls via useEffect whenever messages change,
+  // and the timeout is increased to 200ms so the DOM finishes rendering.
   useEffect(() => {
     if (messages.length === 0) return;
     const timer = setTimeout(() => {

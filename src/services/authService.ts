@@ -29,11 +29,11 @@ function clearSessionCookie() {
   document.cookie = "un_session=; path=/; max-age=0; SameSite=Strict";
 }
 
-// ─── FIX: Cookie set হওয়ার পর resolve করা Promise ──────────────────────────
-// আগে loginWithEmail() শেষ হলেই router.push("/") call হত,
-// কিন্তু onIdTokenChanged async — cookie তখনো set হয়নি।
-// middleware un_session না পেয়ে আবার /login-এ redirect করত।
-// এই function cookie set হওয়া পর্যন্ত wait করে।
+// ─── FIX: Promise that resolves only after the cookie is set ──────────────
+// Previously router.push("/") was called as soon as loginWithEmail() finished,
+// but onIdTokenChanged is async — the cookie wasn't set yet.
+// The middleware found no session and redirected back to /login.
+// This function waits until the cookie is actually set.
 export function waitForSessionCookie(timeoutMs = 5000): Promise<void> {
   return new Promise((resolve, reject) => {
     if (typeof window === "undefined") return resolve();
@@ -77,9 +77,9 @@ export function initSessionSync(): void {
 }
 
 // ─── FIX: Google Redirect result handle ──────────────────────────────────────
-// Mobile browser-এ signInWithPopup block হয়।
-// signInWithRedirect ব্যবহার করতে হয় এবং page reload হওয়ার পর
-// getRedirectResult() দিয়ে result নিতে হয়।
+// Mobile browsers block signInWithPopup.
+// signInWithRedirect must be used instead, and after the page reloads
+// the result is retrieved via getRedirectResult().
 export async function handleGoogleRedirectResult(): Promise<User | null> {
   try {
     const result = await getRedirectResult(auth);
@@ -120,12 +120,12 @@ export async function loginWithEmail(
 }
 
 // ─── Google ───────────────────────────────────────────────────────────────────
-// Desktop-এ popup, mobile-এ redirect ব্যবহার করে।
+// Uses a popup on desktop and a redirect on mobile.
 export async function loginWithGoogle(): Promise<void> {
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
   if (isMobile) {
-    // redirect: page চলে যাবে, ফিরে এলে handleGoogleRedirectResult() handle করবে
+    // redirect: the page navigates away; handleGoogleRedirectResult() handles it on return
     await signInWithRedirect(auth, googleProvider);
   } else {
     const { user } = await signInWithPopup(auth, googleProvider);

@@ -25,7 +25,7 @@ export function UserCard({ user, mutualCount, showButton = true }: Props) {
         <p className="text-xs text-gray-500 truncate">@{user.username}</p>
         {mutualCount !== undefined && mutualCount > 0 && (
           <p className="text-xs text-gray-400 mt-0.5">
-            {mutualCount} জন পরস্পর বন্ধু
+            {mutualCount}  mutual friends
           </p>
         )}
         {user.bio && (

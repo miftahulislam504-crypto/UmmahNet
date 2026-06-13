@@ -18,18 +18,15 @@ export default function FriendsPage() {
   const { data: friendsData }     = useFriends(user?.uid);
 
   const tabs = [
-    { id: "requests" as Tab, label: "অনুরোধ",     icon: UserPlus, count: pending?.length },
-    { id: "friends"  as Tab, label: "বন্ধু তালিকা", icon: Users },
-    { id: "find"     as Tab, label: "মানুষ খুঁজুন",  icon: Search },
+    { id: "requests" as Tab, label: "Requests", icon: UserPlus, count: pending?.length },
+    { id: "friends"  as Tab, label: "Friends",  icon: Users },
+    { id: "find"     as Tab, label: "Find people", icon: Search },
   ];
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Header */}
       <div className="card p-4">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-4">বন্ধু</h1>
-
-        {/* Tabs */}
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Friends</h1>
         <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
           {tabs.map(({ id, label, icon: Icon, count }) => (
             <button
@@ -55,21 +52,14 @@ export default function FriendsPage() {
         </div>
       </div>
 
-      {/* Tab content */}
       {activeTab === "requests" && (
         <div className="flex flex-col gap-3">
           {!pending || pending.length === 0 ? (
-            <EmptyState
-              icon={<UserPlus className="w-8 h-8 text-primary-400" />}
-              title="কোনো অনুরোধ নেই"
-              desc="নতুন বন্ধু অনুরোধ এখানে দেখাবে"
-            />
+            <EmptyState icon={<UserPlus className="w-8 h-8 text-primary-400" />} title="No friend requests" desc="New requests will appear here" />
           ) : (
             <>
-              <p className="text-sm text-gray-500 px-1">{pending.length}টি অনুরোধ</p>
-              {pending.map((req) => (
-                <PendingRequestCard key={req.id} request={req} />
-              ))}
+              <p className="text-sm text-gray-500 px-1">{pending.length} request{pending.length !== 1 ? "s" : ""}</p>
+              {pending.map((req) => <PendingRequestCard key={req.id} request={req} />)}
             </>
           )}
         </div>
@@ -78,20 +68,12 @@ export default function FriendsPage() {
       {activeTab === "friends" && (
         <div className="flex flex-col gap-3">
           {!friendsData || friendsData.friends.length === 0 ? (
-            <EmptyState
-              icon={<Users className="w-8 h-8 text-primary-400" />}
-              title="এখনো কোনো বন্ধু নেই"
-              desc="'মানুষ খুঁজুন' ট্যাব থেকে বন্ধু যোগ করুন"
-            />
+            <EmptyState icon={<Users className="w-8 h-8 text-primary-400" />} title="No friends yet" desc="Use 'Find people' to connect with others" />
           ) : (
             <>
-              <p className="text-sm text-gray-500 px-1">
-                {friendsData.friends.length} জন বন্ধু
-              </p>
+              <p className="text-sm text-gray-500 px-1">{friendsData.friends.length} friend{friendsData.friends.length !== 1 ? "s" : ""}</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {friendsData.friends.map((friend) => (
-                  <UserCard key={friend.uid} user={friend} />
-                ))}
+                {friendsData.friends.map((friend) => <UserCard key={friend.uid} user={friend} />)}
               </div>
             </>
           )}
@@ -103,15 +85,10 @@ export default function FriendsPage() {
   );
 }
 
-// ─── Empty state helper ───────────────────────────────────────────────────────
-function EmptyState({
-  icon, title, desc,
-}: { icon: React.ReactNode; title: string; desc: string }) {
+function EmptyState({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
   return (
     <div className="card p-12 text-center">
-      <div className="w-16 h-16 bg-primary-50 dark:bg-primary-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-        {icon}
-      </div>
+      <div className="w-16 h-16 bg-primary-50 dark:bg-primary-900/20 rounded-full flex items-center justify-center mx-auto mb-4">{icon}</div>
       <h3 className="font-semibold text-gray-900 dark:text-white mb-1">{title}</h3>
       <p className="text-sm text-gray-500">{desc}</p>
     </div>

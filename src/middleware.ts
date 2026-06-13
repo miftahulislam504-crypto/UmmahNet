@@ -13,11 +13,11 @@ export function middleware(request: NextRequest) {
   }
 
   // Firebase auth state lives in browser — we use a session cookie for SSR guard.
-  // NOTE: এই cookie-র JWT validity এখানে verify করা হচ্ছে না (Edge runtime-এ
-  // Firebase Admin SDK চলে না)। এটা শুধু client-side redirect guard —
-  // real security টা Firestore Rules-এ আছে।
-  // Token expiry handle: authService.ts-এ onIdTokenChanged প্রতি ঘণ্টায়
-  // নতুন token দিয়ে cookie refresh করে।
+  // NOTE: this cookie's JWT validity is not verified here (the Firebase
+  // Admin SDK does not run in the Edge runtime). This is only a client-side redirect guard —
+  // real security is enforced by Firestore Rules.
+  // Token expiry is handled by onIdTokenChanged in authService.ts, which
+  // refreshes the cookie with a new token every hour.
   const session = request.cookies.get("un_session");
 
   if (!session?.value) {
@@ -27,7 +27,7 @@ export function middleware(request: NextRequest) {
   }
 
   // Basic JWT structure check (3 parts separated by dots)
-  // Full cryptographic verify Edge runtime-এ possible না — Firestore Rules guard করে।
+  // Full cryptographic verification isn't possible in the Edge runtime — Firestore Rules guard it.
   const parts = session.value.split(".");
   if (parts.length !== 3) {
     const loginUrl = new URL("/login", request.url);

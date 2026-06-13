@@ -31,7 +31,7 @@ export function PendingRequestCard({ request }: Props) {
         </Link>
         <p className="text-xs text-gray-500">@{sender.username}</p>
         <p className="text-xs text-gray-400 mt-0.5">
-          বন্ধু অনুরোধ পাঠিয়েছেন
+          Sent you a friend request
         </p>
 
         <div className="flex gap-2 mt-3">
@@ -40,7 +40,7 @@ export function PendingRequestCard({ request }: Props) {
             loading={accept.isPending}
             onClick={() => accept.mutate(request.id)}
           >
-            গ্রহণ করুন
+            Accept
           </Button>
           <Button
             variant="outline"
@@ -48,7 +48,7 @@ export function PendingRequestCard({ request }: Props) {
             loading={reject.isPending}
             onClick={() => reject.mutate(request.id)}
           >
-            প্রত্যাখ্যান
+            Decline
           </Button>
         </div>
       </div>

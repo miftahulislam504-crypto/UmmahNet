@@ -60,7 +60,7 @@ export function useCreateStory() {
         file,
         caption
       ),
-    onSuccess: () => toast.success("স্টোরি প্রকাশিত হয়েছে ✅"),
-    onError:   () => toast.error("স্টোরি পোস্ট করতে ব্যর্থ হয়েছে"),
+    onSuccess: () => toast.success("Story published ✅"),
+    onError:   () => toast.error("Failed to publish story"),
   });
 }

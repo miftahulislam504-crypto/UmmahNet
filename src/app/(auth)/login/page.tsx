@@ -14,7 +14,7 @@ import {
 } from "@/services/authService";
 import toast from "react-hot-toast";
 
-// ─── Inner component — useSearchParams এখানে safe ────────────────────────────
+// ─── Inner component — useSearchParams is safe here ─────────────────────────
 function LoginForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
@@ -25,41 +25,41 @@ function LoginForm() {
   const [gLoading, setGLoading] = useState(false);
 
   // ─── FIX: Google Redirect result handle ────────────────────────────────────
-  // Mobile-এ signInWithRedirect ব্যবহার হয়।
-  // Page reload হওয়ার পর এই useEffect redirect result চেক করে।
+  // On mobile, signInWithRedirect is used.
+  // After the page reloads, this useEffect checks the redirect result.
   useEffect(() => {
     setGLoading(true);
     handleGoogleRedirectResult()
       .then(async (user) => {
         if (user) {
-          toast.success("স্বাগতম!");
+          toast.success("Welcome!");
           await waitForSessionCookie();
           router.push(from);
         }
       })
-      .catch(() => toast.error("Google লগইন ব্যর্থ হয়েছে"))
+      .catch(() => toast.error("Google sign-in failed"))
       .finally(() => setGLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── FIX: Email login redirect ─────────────────────────────────────────────
-  // waitForSessionCookie() — cookie set হওয়ার পর redirect।
-  // আগে cookie set হওয়ার আগেই router.push() হত,
-  // middleware session না পেয়ে আবার /login-এ পাঠাত।
+  // waitForSessionCookie() — redirect only after the cookie is set.
+  // Previously router.push("/") fired before the cookie was set,
+  // so middleware found no session and bounced back to /login.
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.email || !form.password) return toast.error("সব ঘর পূরণ করুন");
+    if (!form.email || !form.password) return toast.error("Please fill in all fields");
 
     setLoading(true);
     try {
       await loginWithEmail(form.email, form.password);
-      toast.success("স্বাগতম! লগইন সফল হয়েছে");
+      toast.success("Welcome back! Login successful");
       await waitForSessionCookie();
       router.push(from);
     } catch (err: any) {
       const msg =
         err.code === "auth/invalid-credential"
-          ? "ইমেইল বা পাসওয়ার্ড ভুল"
-          : "লগইন ব্যর্থ হয়েছে";
+          ? "Incorrect email or password"
+          : "Login failed";
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -69,33 +69,33 @@ function LoginForm() {
   async function handleGoogle() {
     setGLoading(true);
     try {
-      // Desktop-এ popup — user সাথে সাথে পায়; redirect করা যায়।
-      // Mobile-এ redirect — page চলে যাবে, useEffect handle করবে।
+      // Desktop uses a popup — the user returns immediately.
+      // Mobile uses a redirect — the page navigates away, useEffect handles the rest.
       await loginWithGoogle();
 
-      // Desktop popup সফল হলেই এখানে আসবে
-      toast.success("স্বাগতম!");
+      // Desktop popup success lands here
+      toast.success("Welcome!");
       await waitForSessionCookie();
       router.push(from);
     } catch (err: any) {
-      // Mobile redirect হলে error আসে না — page চলে যায়
-      // popup cancel হলে auth/popup-closed-by-user আসে
+      // On mobile redirect, no error is thrown — the page just navigates away.
+      // If the popup was closed, auth/popup-closed-by-user is thrown.
       if (err?.code !== "auth/popup-closed-by-user") {
-        toast.error("Google লগইন ব্যর্থ হয়েছে");
+        toast.error("Google sign-in failed");
       }
       setGLoading(false);
     }
-    // Note: mobile redirect-এ finally চলে না — page reload হয়
+    // Note: on mobile redirect, finally doesn't run — the page reloads
   }
 
   return (
     <>
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">আবার স্বাগতম!</h2>
-      <p className="text-sm text-gray-500 mb-6">আপনার অ্যাকাউন্টে লগইন করুন</p>
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Welcome back!</h2>
+      <p className="text-sm text-gray-500 mb-6">Log in to your account</p>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <Input
-          label="ইমেইল"
+          label="Email"
           type="email"
           placeholder="name@email.com"
           leftIcon={<Mail className="w-4 h-4" />}
@@ -103,7 +103,7 @@ function LoginForm() {
           onChange={(e) => setForm({ ...form, email: e.target.value })}
         />
         <Input
-          label="পাসওয়ার্ড"
+          label="Password"
           type="password"
           placeholder="••••••••"
           leftIcon={<Lock className="w-4 h-4" />}
@@ -113,18 +113,18 @@ function LoginForm() {
 
         <div className="flex justify-end">
           <Link href="/forgot-password" className="text-xs text-primary-600 hover:underline">
-            পাসওয়ার্ড ভুলে গেছেন?
+            Forgot password?
           </Link>
         </div>
 
         <Button type="submit" loading={loading} className="w-full justify-center">
-          লগইন
+          Log in
         </Button>
       </form>
 
       <div className="flex items-center gap-3 my-4">
         <hr className="flex-1 border-gray-200 dark:border-gray-700" />
-        <span className="text-xs text-gray-400">অথবা</span>
+        <span className="text-xs text-gray-400">or</span>
         <hr className="flex-1 border-gray-200 dark:border-gray-700" />
       </div>
 
@@ -137,7 +137,7 @@ function LoginForm() {
                    disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {gLoading ? (
-          <span className="text-gray-500">লোড হচ্ছে...</span>
+          <span className="text-gray-500">Loading...</span>
         ) : (
           <>
             <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -146,27 +146,27 @@ function LoginForm() {
               <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
               <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
             </svg>
-            Google দিয়ে লগইন
+            Continue with Google
           </>
         )}
       </button>
 
       <p className="text-center text-sm text-gray-500 mt-6">
-        নতুন ব্যবহারকারী?{" "}
+        New here?{" "}
         <Link href="/register" className="text-primary-600 font-semibold hover:underline">
-          অ্যাকাউন্ট খুলুন
+          Create an account
         </Link>
       </p>
     </>
   );
 }
 
-// ─── Page export — LoginForm কে Suspense দিয়ে wrap ────────────────────────────
+// ─── Page export — wrap LoginForm in Suspense ────────────────────────────────
 export default function LoginPage() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center py-10">
-        <span className="text-gray-400 text-sm">লোড হচ্ছে...</span>
+        <span className="text-gray-400 text-sm">Loading...</span>
       </div>
     }>
       <LoginForm />

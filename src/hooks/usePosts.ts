@@ -80,11 +80,11 @@ export function useCreatePost() {
         visibility
       ),
     onSuccess: () => {
-      toast.success("পোস্ট প্রকাশিত হয়েছে ✅");
+      toast.success("Post published ✅");
       qc.invalidateQueries({ queryKey: ["feed"] });
       qc.invalidateQueries({ queryKey: ["userPosts", user?.uid] });
     },
-    onError: () => toast.error("পোস্ট করতে ব্যর্থ হয়েছে"),
+    onError: () => toast.error("Failed to post"),
   });
 }
 
@@ -96,11 +96,11 @@ export function useDeletePost() {
   return useMutation({
     mutationFn: (postId: string) => deletePost(postId, user!.uid),
     onSuccess:  () => {
-      toast.success("পোস্ট মুছে ফেলা হয়েছে");
+      toast.success("Post deleted");
       qc.invalidateQueries({ queryKey: ["feed"] });
       qc.invalidateQueries({ queryKey: ["userPosts", user?.uid] });
     },
-    onError: () => toast.error("মুছতে ব্যর্থ হয়েছে"),
+    onError: () => toast.error("Failed to delete"),
   });
 }
 
@@ -128,7 +128,7 @@ export function useLike(postId: string, initialCount: number) {
       // Revert on error
       setLiked((prev) => !prev);
       setCount((prev) => liked ? prev + 1 : prev - 1);
-      toast.error("ব্যর্থ হয়েছে");
+      toast.error("Failed");
     } finally {
       setLoading(false);
     }
@@ -154,7 +154,7 @@ export function useComments(postId: string) {
     try {
       await addComment(postId, user.uid, profile.displayName, profile.photoURL, content);
     } catch {
-      toast.error("মন্তব্য করতে ব্যর্থ হয়েছে");
+      toast.error("Failed to comment");
     } finally {
       setSubmitting(false);
     }
@@ -164,7 +164,7 @@ export function useComments(postId: string) {
     try {
       await deleteComment(commentId, postId);
     } catch {
-      toast.error("মুছতে ব্যর্থ হয়েছে");
+      toast.error("Failed to delete");
     }
   }, [postId]);
 

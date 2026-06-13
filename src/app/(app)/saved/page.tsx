@@ -39,7 +39,7 @@ export default function SavedPage() {
     <div className="flex flex-col gap-4">
       <div className="card p-4">
         <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <Bookmark className="w-5 h-5 text-primary-600" />সেভ করা পোস্ট
+          <Bookmark className="w-5 h-5 text-primary-600" />Saved posts
         </h1>
       </div>
 
@@ -54,8 +54,8 @@ export default function SavedPage() {
           <div className="w-16 h-16 bg-primary-50 dark:bg-primary-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <Bookmark className="w-8 h-8 text-primary-400" />
           </div>
-          <h3 className="font-semibold text-gray-900 dark:text-white mb-1">কোনো সেভ করা পোস্ট নেই</h3>
-          <p className="text-sm text-gray-500">পোস্টের ⋯ মেনু থেকে সেভ করুন</p>
+          <h3 className="font-semibold text-gray-900 dark:text-white mb-1">No saved posts yet</h3>
+          <p className="text-sm text-gray-500">Save posts from the ⋯ menu</p>
         </div>
       )}
 

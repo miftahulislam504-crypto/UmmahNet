@@ -128,8 +128,8 @@ export function ChatWindow({ conversationId, onBack }: Props) {
                     "text-xs mt-1",
                     isMe ? "text-primary-200" : "text-gray-400"
                   )}>
-                    {createdAt.toLocaleTimeString("bn-BD", { hour: "2-digit", minute: "2-digit" })}
-                    {isMe && msg.seen && " · দেখেছে"}
+                    {createdAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+                    {isMe && msg.seen && " ·  · Seen"}
                   </p>
                 </div>
               </div>
@@ -169,7 +169,7 @@ export function ChatWindow({ conversationId, onBack }: Props) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKey}
-          placeholder="মেসেজ লিখুন..."
+          placeholder="Write a message..."
           className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full px-4 py-2.5
                      text-sm outline-none focus:ring-2 focus:ring-primary-500 transition-all"
         />

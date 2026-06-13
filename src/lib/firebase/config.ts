@@ -4,8 +4,8 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 // ─── Critical Fix: Validate env vars before initializing ─────────────────────
-// Vercel-এ env var missing থাকলে initializeApp silent crash করে।
-// এখন clearly বলবে কোন variable নেই।
+// On Vercel, a missing env var causes initializeApp to fail silently.
+// Now it clearly reports which variable is missing.
 const requiredEnvVars = {
   apiKey:            process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain:        process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -15,7 +15,7 @@ const requiredEnvVars = {
   appId:             process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Build এর সময় (SSR/SSG) missing env var হলে warn করো কিন্তু crash করো না
+// During build (SSR/SSG), warn on a missing env var instead of crashing
 if (typeof window === "undefined") {
   const missing = Object.entries(requiredEnvVars)
     .filter(([, v]) => !v)
@@ -47,8 +47,8 @@ export const storage        = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
 
 // ─── Analytics: lazy load, browser-only, never blocks SSR ───────────────────
-// Top-level promise সরানো হয়েছে — এটা SSR-এ crash করত।
-// প্রয়োজনে component-এ lazy import করো।
+// Removed the top-level promise — it crashed during SSR.
+// Lazy-import it in a component if needed.
 export async function getAnalyticsInstance() {
   if (typeof window === "undefined") return null;
   try {

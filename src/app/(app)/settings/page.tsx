@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { doc, updateDoc } from "firebase/firestore";
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import { db, auth } from "@/lib/firebase/config";
 import { useAuthStore } from "@/store/authStore";
+import { logout } from "@/services/authService";
 import { Button } from "@/components/ui/Button";
 import { Input  } from "@/components/ui/Input";
 import {
-  Globe, Users, Lock, Shield, Bell, ChevronRight, ChevronLeft,
+  Globe, Users, Lock, Shield, Bell, ChevronRight, ChevronLeft, LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
@@ -25,6 +27,13 @@ const sections: { id: Section; label: string; desc: string; icon: typeof Shield 
 export default function SettingsPage() {
   const { profile, setProfile }     = useAuthStore();
   const [section, setSection]       = useState<Section | null>(null);
+  const router                      = useRouter();
+
+  async function handleLogout() {
+    await logout();
+    toast.success("Logged out successfully");
+    router.push("/login");
+  }
 
   if (!profile) return null;
 
@@ -83,6 +92,24 @@ export default function SettingsPage() {
             <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
           </button>
         ))}
+      </div>
+
+      {/* Log out */}
+      <div className="card overflow-hidden">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-4 px-4 py-4 text-left
+                     hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+        >
+          <div className="w-10 h-10 rounded-2xl bg-red-50 dark:bg-red-900/20
+                          flex items-center justify-center flex-shrink-0">
+            <LogOut className="w-5 h-5 text-red-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-red-500">Log out</p>
+            <p className="text-xs text-gray-500 mt-0.5">Sign out of your account</p>
+          </div>
+        </button>
       </div>
 
       {/* App info */}

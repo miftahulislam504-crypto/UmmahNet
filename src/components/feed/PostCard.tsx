@@ -47,7 +47,7 @@ export function PostCard({ post }: Props) {
     if (!user) return;
     const nowSaved = await toggleSavePost(user.uid, post.id);
     setSaved(nowSaved);
-    toast.success(nowSaved ? "পোস্ট সেভ হয়েছে" : "সেভ তালিকা থেকে সরানো হয়েছে");
+    toast.success(nowSaved ? "Post saved" : "Removed from saved");
   }
 
   async function handleShare() {
@@ -55,7 +55,7 @@ export function PostCard({ post }: Props) {
       await navigator.share({ title: post.authorName, text: post.content });
     } catch {
       await navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`);
-      toast.success("লিংক কপি হয়েছে");
+      toast.success("Link copied");
     }
   }
 
@@ -102,7 +102,7 @@ export function PostCard({ post }: Props) {
                              text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
                   <Bookmark className={cn("w-4 h-4", saved && "fill-current text-primary-600")} />
-                  {saved ? "সেভ থেকে সরান" : "পোস্ট সেভ করুন"}
+                  {saved ? "Unsave" : "Save post"}
                 </button>
                 {!isOwner && (
                   <button
@@ -110,7 +110,7 @@ export function PostCard({ post }: Props) {
                     className="w-full flex items-center gap-2 px-4 py-2.5 text-sm
                                text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                   >
-                    <Flag className="w-4 h-4" />রিপোর্ট করুন
+                    <Flag className="w-4 h-4" />Report
                   </button>
                 )}
                 {isOwner && (
@@ -119,7 +119,7 @@ export function PostCard({ post }: Props) {
                     className="w-full flex items-center gap-2 px-4 py-2.5 text-sm
                                text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                   >
-                    <Trash2 className="w-4 h-4" />পোস্ট মুছুন
+                    <Trash2 className="w-4 h-4" />Delete post
                   </button>
                 )}
               </div>
@@ -150,7 +150,7 @@ export function PostCard({ post }: Props) {
                 onClick={() => setExpanded(!expanded)}
                 className="text-primary-600 text-sm font-medium mt-1 hover:underline"
               >
-                {expanded ? "কম দেখুন" : "আরও দেখুন"}
+                {expanded ? "See less" : "See more"}
               </button>
             )}
           </div>
@@ -196,7 +196,7 @@ export function PostCard({ post }: Props) {
             )}
             {post.commentsCount > 0 && (
               <button onClick={() => setShowComments(!showComments)} className="ml-auto hover:underline">
-                {post.commentsCount} টি মন্তব্য
+                {post.commentsCount} Comment{post.commentsCount !== 1 ? "s" : ""}
               </button>
             )}
           </div>
@@ -215,21 +215,21 @@ export function PostCard({ post }: Props) {
                 : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
             )}
           >
-            <Heart className={cn("w-5 h-5", liked && "fill-red-500")} />লাইক
+            <Heart className={cn("w-5 h-5", liked && "fill-red-500")} />Like
           </button>
           <button
             onClick={() => setShowComments(!showComments)}
             className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm
                        font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
-            <MessageCircle className="w-5 h-5" />মন্তব্য
+            <MessageCircle className="w-5 h-5" />Comment
           </button>
           <button
             onClick={handleShare}
             className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-sm
                        font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
-            <Share2 className="w-5 h-5" />শেয়ার
+            <Share2 className="w-5 h-5" />Share
           </button>
         </div>
 

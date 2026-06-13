@@ -74,7 +74,7 @@ export async function sendMessage(
   });
 
   batch.update(doc(db, "conversations", conversationId), {
-    lastMessage:  imageFile ? "📷 ছবি" : text.trim(),
+    lastMessage:  imageFile ? "📷 Photo" : text.trim(),
     lastSenderId: senderId,
     updatedAt:    serverTimestamp(),
   });
@@ -83,10 +83,10 @@ export async function sendMessage(
 }
 
 // ─── Mark messages as seen ────────────────────────────────────────────────────
-// BUG 2 FIX: আগে "senderId", "!=", myUid ব্যবহার হত।
-// != অপারেটর + compound query-র জন্য আলাদা Firestore index দরকার হয়,
-// যেটা indexes.json-এ ছিল না — production-এ silent crash করত।
-// Fix: "!=" বাদ দিয়ে client-side filter করা হচ্ছে।
+// BUG 2 FIX: previously used "senderId", "!=", myUid.
+// The != operator combined with a compound query requires a separate
+// Firestore index, which was missing from indexes.json — causing a silent crash in production.
+// Fix: dropped "!=" and filter on the client side instead.
 export async function markAsSeen(
   conversationId: string,
   myUid:          string
@@ -100,7 +100,7 @@ export async function markAsSeen(
   const snap = await getDocs(q);
   if (snap.empty) return;
 
-  // Client-side filter: শুধু অন্যজনের unseen message mark করো
+  // Client-side filter: only mark the other person's unseen messages
   const toMark = snap.docs.filter((d) => d.data().senderId !== myUid);
   if (toMark.length === 0) return;
 

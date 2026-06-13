@@ -112,7 +112,7 @@ export function StoryViewer({ groups, initialGroup, onClose, onView }: Props) {
           <div>
             <p className="text-white font-semibold text-sm drop-shadow">{story.authorName}</p>
             <p className="text-white/70 text-xs">
-              {Math.round((story.expiresAt.toDate().getTime() - Date.now()) / 3600000)}ঘণ্টা বাকি
+              {Math.round((story.expiresAt.toDate().getTime() - Date.now()) / 3600000)}h left
             </p>
           </div>
           {isOwner && (

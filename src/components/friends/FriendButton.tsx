@@ -37,10 +37,10 @@ export function FriendButton({ theirUid, size = "md" }: Props) {
             onClick={() => { actions.remove.mutate(); setShowConfirm(false); }}
           >
             <UserMinus className="w-4 h-4" />
-            হ্যাঁ, সরাও
+            Yes, remove
           </Button>
           <Button variant="outline" size={size} onClick={() => setShowConfirm(false)}>
-            বাতিল
+            Cancel
           </Button>
         </div>
       );
@@ -48,7 +48,7 @@ export function FriendButton({ theirUid, size = "md" }: Props) {
     return (
       <Button variant="outline" size={size} onClick={() => setShowConfirm(true)}>
         <UserCheck className="w-4 h-4" />
-        বন্ধু
+        Friends
       </Button>
     );
   }
@@ -63,7 +63,7 @@ export function FriendButton({ theirUid, size = "md" }: Props) {
         onClick={() => actions.cancel.mutate(rel.requestId!)}
       >
         <Clock className="w-4 h-4" />
-        অনুরোধ পাঠানো হয়েছে
+        Request sent
       </Button>
     );
   }
@@ -78,7 +78,7 @@ export function FriendButton({ theirUid, size = "md" }: Props) {
           onClick={() => actions.accept.mutate(rel.requestId!)}
         >
           <UserCheck className="w-4 h-4" />
-          গ্রহণ করুন
+          Accept
         </Button>
         <Button
           variant="outline"
@@ -87,7 +87,7 @@ export function FriendButton({ theirUid, size = "md" }: Props) {
           onClick={() => actions.reject.mutate(rel.requestId!)}
         >
           <UserX className="w-4 h-4" />
-          প্রত্যাখ্যান
+          Decline
         </Button>
       </div>
     );
@@ -101,7 +101,7 @@ export function FriendButton({ theirUid, size = "md" }: Props) {
       onClick={() => actions.send.mutate()}
     >
       <UserPlus className="w-4 h-4" />
-      বন্ধু অনুরোধ
+      Add friend
     </Button>
   );
 }
