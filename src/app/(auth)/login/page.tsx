@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Mail, Lock } from "lucide-react";
@@ -14,7 +14,8 @@ import {
 } from "@/services/authService";
 import toast from "react-hot-toast";
 
-export default function LoginPage() {
+// ─── Inner component — useSearchParams এখানে safe ────────────────────────────
+function LoginForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const from         = searchParams.get("from") ?? "/";
@@ -157,5 +158,18 @@ export default function LoginPage() {
         </Link>
       </p>
     </>
+  );
+}
+
+// ─── Page export — LoginForm কে Suspense দিয়ে wrap ────────────────────────────
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center py-10">
+        <span className="text-gray-400 text-sm">লোড হচ্ছে...</span>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }
