@@ -57,4 +57,9 @@
            focus:border-primary-500 focus:bg-white dark:focus:bg-gray-900
            rounded-xl px-4 py-2.5 text-sm outline-none transition-all duration-200;
   }
+
+  /* iOS home indicator spacing */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 }
