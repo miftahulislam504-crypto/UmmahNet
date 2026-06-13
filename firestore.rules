@@ -9,12 +9,17 @@ service cloud.firestore {
     function isOwner(uid) {
       return request.auth.uid == uid;
     }
+    // Phase 10 — Admin check
+    function isAdmin() {
+      return isAuth() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
 
     // ── Users ─────────────────────────────────────────────────────────────────
     match /users/{uid} {
       allow read:   if isAuth();
       allow create: if isOwner(uid);
-      allow update: if isOwner(uid);
+      allow update: if isOwner(uid) || isAdmin(); // admin can ban/unban
       allow delete: if false;
     }
 
@@ -23,7 +28,9 @@ service cloud.firestore {
       allow read:   if isAuth();
       allow create: if isAuth() && request.resource.data.authorId == request.auth.uid;
       allow update: if isAuth() && resource.data.authorId == request.auth.uid;
-      allow delete: if isAuth() && resource.data.authorId == request.auth.uid;
+      allow delete: if isAuth() && (
+        resource.data.authorId == request.auth.uid || isAdmin()
+      );
     }
 
     // ── Comments ──────────────────────────────────────────────────────────────
@@ -31,7 +38,9 @@ service cloud.firestore {
       allow read:   if isAuth();
       allow create: if isAuth() && request.resource.data.authorId == request.auth.uid;
       allow update: if isAuth() && resource.data.authorId == request.auth.uid;
-      allow delete: if isAuth() && resource.data.authorId == request.auth.uid;
+      allow delete: if isAuth() && (
+        resource.data.authorId == request.auth.uid || isAdmin()
+      );
     }
 
     // ── Likes ─────────────────────────────────────────────────────────────────
@@ -92,7 +101,6 @@ service cloud.firestore {
     // update: শুধু receiver নিজের seen status update করতে পারবে।
     match /messages/{msgId} {
       allow read: if isAuth() && (
-        // conversation এর participant কিনা চেক
         exists(/databases/$(database)/documents/conversations/$(resource.data.conversationId)) &&
         request.auth.uid in get(/databases/$(database)/documents/conversations/$(resource.data.conversationId)).data.participants
       );
@@ -107,12 +115,66 @@ service cloud.firestore {
     match /notifications/{notifId} {
       allow read, update: if isAuth() && resource.data.userId == request.auth.uid;
       allow create:       if isAuth();
+      allow delete:       if isAuth() && resource.data.userId == request.auth.uid;
     }
 
     // ── Reports ───────────────────────────────────────────────────────────────
     match /reports/{reportId} {
-      allow create: if isAuth();
-      allow read:   if false;
+      allow create:       if isAuth();
+      allow read, update: if isAdmin(); // Phase 10 — admin can review
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PHASE 8 — Stories
+    // ─────────────────────────────────────────────────────────────────────────
+    match /stories/{storyId} {
+      allow read:   if isAuth();
+      allow create: if isAuth() &&
+        request.resource.data.authorId == request.auth.uid;
+      // update: শুধু viewerIds array-union — যেকোনো auth user দেখলে
+      allow update: if isAuth();
+      allow delete: if isAuth() && (
+        resource.data.authorId == request.auth.uid || isAdmin()
+      );
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PHASE 9 — Advanced Features
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // Saved Posts — শুধু owner পড়বে ও লিখবে
+    match /savedPosts/{docId} {
+      allow read, delete: if isAuth() &&
+        resource.data.userId == request.auth.uid;
+      allow create: if isAuth() &&
+        request.resource.data.userId == request.auth.uid;
+    }
+
+    // Blocks — শুধু blocker নিজে manage করবে
+    match /blocks/{docId} {
+      allow read, delete: if isAuth() &&
+        resource.data.blockerId == request.auth.uid;
+      allow create: if isAuth() &&
+        request.resource.data.blockerId == request.auth.uid;
+    }
+
+    // Follows — সবাই পড়তে পারবে, follower নিজে লিখবে
+    match /follows/{docId} {
+      allow read:   if isAuth();
+      allow create: if isAuth() &&
+        request.resource.data.followerId == request.auth.uid;
+      allow delete: if isAuth() &&
+        resource.data.followerId == request.auth.uid;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // PHASE 10 — Admin Panel
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // Admins collection — শুধু admin পড়বে ও লিখবে
+    match /admins/{uid} {
+      allow read:  if isAdmin();
+      allow write: if isAdmin();
     }
   }
 }
