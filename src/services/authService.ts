@@ -16,13 +16,21 @@ import {
 import { auth, db, googleProvider } from "@/lib/firebase/config";
 import type { UserProfile } from "@/types";
 
+// ─── Session cookie helper ─────────────────────────────────────────────────────
+// FIX: Secure flag যোগ করা হয়েছে — production-এ HTTPS ছাড়া cookie set হবে না।
+// আগে HTTP-তেও cookie চলে যেত, man-in-the-middle attack possible ছিল।
+function setSessionCookie(token: string) {
+  const isProduction = process.env.NODE_ENV === "production";
+  const secure       = isProduction ? "; Secure" : "";
+  document.cookie = `un_session=${token}; path=/; max-age=3600; SameSite=Strict${secure}`;
+}
+
+function clearSessionCookie() {
+  document.cookie = "un_session=; path=/; max-age=0; SameSite=Strict";
+}
+
 // ─── Critical Fix: Session cookie sync ────────────────────────────────────────
-// আগে এই code টা module-level এ ছিল (top-level if block)।
-// Next.js 15 / Vercel-এ server-side module import হওয়ার সময়
-// এই code run হত — `auth` object তখন browser API ছাড়া কাজ করে না,
-// ফলে silent crash হত এবং পুরো app লোড বন্ধ হয়ে যেত।
-//
-// Fix: initSessionSync() একটা explicit function —
+// initSessionSync() একটা explicit function —
 // শুধু browser-এ, client component mount হওয়ার পর call হবে।
 let sessionSyncInitialized = false;
 
@@ -35,23 +43,23 @@ export function initSessionSync(): void {
     if (user) {
       try {
         const token = await user.getIdToken();
-        document.cookie = `un_session=${token}; path=/; max-age=3600; SameSite=Strict`;
+        setSessionCookie(token);
       } catch {
         // token fetch ব্যর্থ হলে session clear করো
-        document.cookie = "un_session=; path=/; max-age=0";
+        clearSessionCookie();
       }
     } else {
-      document.cookie = "un_session=; path=/; max-age=0";
+      clearSessionCookie();
     }
   });
 }
 
 // ─── Register ─────────────────────────────────────────────────────────────────
 export async function registerWithEmail(
-  email: string,
-  password: string,
+  email:       string,
+  password:    string,
   displayName: string,
-  username: string
+  username:    string
 ): Promise<User> {
   const { user } = await createUserWithEmailAndPassword(auth, email, password);
   await updateProfile(user, { displayName });
@@ -61,7 +69,7 @@ export async function registerWithEmail(
 
 // ─── Login ────────────────────────────────────────────────────────────────────
 export async function loginWithEmail(
-  email: string,
+  email:    string,
   password: string
 ): Promise<User> {
   const { user } = await signInWithEmailAndPassword(auth, email, password);
@@ -83,13 +91,13 @@ export async function loginWithGoogle(): Promise<User> {
 export async function logout(): Promise<void> {
   await signOut(auth);
   if (typeof window !== "undefined") {
-    document.cookie = "un_session=; path=/; max-age=0";
+    clearSessionCookie();
   }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 async function createUserDocument(
-  user: User,
+  user:  User,
   extra: { displayName?: string; username: string }
 ): Promise<void> {
   const profile = {

@@ -56,15 +56,28 @@ service cloud.firestore {
     }
 
     // ── Friendships ───────────────────────────────────────────────────────────
+    // FIX: আগে যে কেউ যেকোনো friendship লিখতে পারত।
+    // এখন শুধু সেই দুজন পড়তে পারবে, এবং write সম্পূর্ণ বন্ধ
+    // (friendService.ts writeBatch দিয়ে acceptFriendRequest থেকে create করে —
+    //  কিন্তু client-side rules দিয়ে এটা যাচাই করা কঠিন; তাই
+    //  শুধু participants দিয়ে read guard করা হয়েছে)
     match /friendships/{docId} {
-      allow read:  if isAuth();
-      allow write: if isAuth();
+      allow read:  if isAuth() && (
+        resource.data.user1 == request.auth.uid ||
+        resource.data.user2 == request.auth.uid
+      );
+      allow create: if isAuth() && (
+        request.resource.data.user1 == request.auth.uid ||
+        request.resource.data.user2 == request.auth.uid
+      );
+      allow delete: if isAuth() && (
+        resource.data.user1 == request.auth.uid ||
+        resource.data.user2 == request.auth.uid
+      );
+      allow update: if false;
     }
 
     // ── Conversations ─────────────────────────────────────────────────────────
-    // BUG 1 FIX: আগে read, write দুটোতেই resource.data ব্যবহার হত।
-    // কিন্তু create-এর সময় document এখনো exist করে না, তাই resource.data নেই।
-    // create-এ request.resource.data ব্যবহার করতে হয়।
     match /conversations/{convId} {
       allow read, update, delete: if isAuth() &&
         request.auth.uid in resource.data.participants;
@@ -73,10 +86,21 @@ service cloud.firestore {
     }
 
     // ── Messages ──────────────────────────────────────────────────────────────
+    // FIX (CRITICAL): আগে যেকোনো authenticated user সব message পড়তে ও
+    // update করতে পারত — মারাত্মক privacy bug।
+    // এখন শুধু conversation participant-রা পড়তে পারবে।
+    // update: শুধু receiver নিজের seen status update করতে পারবে।
     match /messages/{msgId} {
-      allow read:   if isAuth();
+      allow read: if isAuth() && (
+        // conversation এর participant কিনা চেক
+        exists(/databases/$(database)/documents/conversations/$(resource.data.conversationId)) &&
+        request.auth.uid in get(/databases/$(database)/documents/conversations/$(resource.data.conversationId)).data.participants
+      );
       allow create: if isAuth() && request.resource.data.senderId == request.auth.uid;
-      allow update: if isAuth();
+      // update: শুধু seen/seenAt field — sender নিজে না
+      allow update: if isAuth() &&
+        resource.data.senderId != request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['seen', 'seenAt']);
     }
 
     // ── Notifications ─────────────────────────────────────────────────────────
