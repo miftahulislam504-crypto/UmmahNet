@@ -32,7 +32,7 @@ export function BottomNav() {
     if (!content.trim() || posting) return;
     setPosting(true);
     try {
-      await createPost.mutateAsync({ content: content.trim(), images: [], visibility });
+      { content: content.trim(), files: [], visibility }
       setContent("");
       setShowModal(false);
     } finally {
