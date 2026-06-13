@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { Search, Bell, LogOut, User, Settings, ChevronRight } from "lucide-react";
+import { Search, Bell, LogOut, User, Settings, ChevronRight, X } from "lucide-react";
 import { Avatar }           from "@/components/ui/Avatar";
 import { useAuthStore }     from "@/store/authStore";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -17,11 +17,11 @@ export function Navbar() {
   const router                      = useRouter();
   const pathname                    = usePathname();
   const [profileOpen, setProfileOpen] = useState(false);
-  const [searchFocused, setSearchFocused] = useState(false);
-  const [searchQuery, setSearchQuery]     = useState("");
+  const [searchOpen,  setSearchOpen]  = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchRef   = useRef<HTMLInputElement>(null);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -32,65 +32,51 @@ export function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (searchOpen) setTimeout(() => searchRef.current?.focus(), 50);
+  }, [searchOpen]);
+
   async function handleLogout() {
     setProfileOpen(false);
     await logout();
-    toast.success("Logged out successfully");
+    toast.success("লগআউট সফল হয়েছে");
     router.push("/login");
   }
 
   function handleSearchSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-      setSearchQuery("");
-    } else {
-      router.push("/search");
-    }
+    const q = searchQuery.trim();
+    router.push(q ? `/search?q=${encodeURIComponent(q)}` : "/search");
+    setSearchQuery("");
+    setSearchOpen(false);
   }
 
   return (
     <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 shadow-sm">
-      <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-3">
+      <div className="max-w-5xl mx-auto px-3 h-14 flex items-center gap-2">
 
-        {/* Site name — left */}
-        <Link
-          href="/"
-          className="flex items-center gap-2 flex-shrink-0 select-none"
-        >
-          <div className="w-8 h-8 rounded-xl bg-primary-600 flex items-center justify-center shadow-sm">
+        {/* Logo — always visible, text hides on small screens */}
+        <Link href="/" className="flex items-center gap-2 flex-shrink-0">
+          <div className="w-8 h-8 rounded-xl bg-primary-600 flex items-center justify-center shadow-sm flex-shrink-0">
             <span className="text-white font-bold text-sm leading-none">U</span>
           </div>
-          <span className="font-bold text-gray-900 dark:text-white text-[15px] tracking-tight">
+          <span className="font-bold text-gray-900 dark:text-white text-[15px] tracking-tight hidden sm:block">
             UmmahNet
           </span>
         </Link>
 
-        {/* Search bar — center, grows to fill space */}
+        {/* Search — desktop: inline bar / mobile: icon that opens overlay */}
         <form
           onSubmit={handleSearchSubmit}
-          className="flex-1 max-w-sm mx-auto"
+          className="flex-1 min-w-0 hidden sm:block"
         >
-          <div
-            className={cn(
-              "flex items-center gap-2 rounded-xl px-3 py-2 transition-all duration-200",
-              searchFocused
-                ? "bg-white dark:bg-gray-800 ring-2 ring-primary-500 shadow-sm"
-                : "bg-gray-100 dark:bg-gray-800"
-            )}
-          >
-            <Search
-              className={cn(
-                "w-4 h-4 flex-shrink-0 transition-colors",
-                searchFocused ? "text-primary-500" : "text-gray-400"
-              )}
-            />
+          <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-xl px-3 py-2">
+            <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
             <input
+              ref={searchRef}
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setSearchFocused(false)}
               placeholder="Search UmmahNet..."
               className="flex-1 bg-transparent text-sm text-gray-700 dark:text-gray-200
                          placeholder:text-gray-400 outline-none min-w-0"
@@ -98,27 +84,34 @@ export function Navbar() {
           </div>
         </form>
 
-        {/* Right controls */}
-        <div className="flex items-center gap-1 flex-shrink-0">
+        {/* Right controls — flex-shrink-0 ensures they never get clipped */}
+        <div className="flex items-center gap-1 flex-shrink-0 ml-auto sm:ml-0">
+
+          {/* Mobile search icon */}
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="sm:hidden p-2 rounded-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            aria-label="Search"
+          >
+            <Search className="w-5 h-5" />
+          </button>
 
           {/* Notification bell */}
           <Link
             href="/notifications"
             className={cn(
-              "relative p-2.5 rounded-xl transition-colors",
+              "relative p-2 rounded-xl transition-colors",
               pathname === "/notifications"
                 ? "text-primary-600 bg-primary-50 dark:bg-primary-900/20"
                 : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
             )}
-            title="Notifications"
+            aria-label="Notifications"
           >
             <Bell className="w-5 h-5" />
             {unreadCount > 0 && (
-              <span
-                className="absolute top-1.5 right-1.5 min-w-[16px] h-4 px-0.5
-                           bg-red-500 text-white text-[10px] font-bold rounded-full
-                           flex items-center justify-center leading-none"
-              >
+              <span className="absolute top-1 right-1 min-w-[16px] h-4 px-0.5
+                               bg-red-500 text-white text-[10px] font-bold rounded-full
+                               flex items-center justify-center leading-none">
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             )}
@@ -128,25 +121,18 @@ export function Navbar() {
           {user && profile ? (
             <div className="relative" ref={dropdownRef}>
               <button
-                onClick={() => setProfileOpen((prev) => !prev)}
-                className={cn(
-                  "rounded-full focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1",
-                  "transition-opacity hover:opacity-90"
-                )}
+                onClick={() => setProfileOpen((p) => !p)}
+                className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1 transition-opacity hover:opacity-90"
                 aria-label="Account menu"
                 aria-expanded={profileOpen}
               >
                 <Avatar src={profile.photoURL} name={profile.displayName} size="sm" />
               </button>
 
-              {/* Dropdown */}
               {profileOpen && (
-                <div
-                  className="absolute right-0 top-11 w-56 bg-white dark:bg-gray-900
-                             rounded-2xl shadow-lg border border-gray-100 dark:border-gray-800
-                             overflow-hidden z-50"
-                >
-                  {/* Profile summary */}
+                <div className="absolute right-0 top-11 w-56 bg-white dark:bg-gray-900
+                               rounded-2xl shadow-lg border border-gray-100 dark:border-gray-800
+                               overflow-hidden z-50">
                   <Link
                     href={`/profile/${user.uid}`}
                     onClick={() => setProfileOpen(false)}
@@ -165,7 +151,6 @@ export function Navbar() {
 
                   <div className="border-t border-gray-100 dark:border-gray-800" />
 
-                  {/* Settings */}
                   <Link
                     href="/settings"
                     onClick={() => setProfileOpen(false)}
@@ -174,31 +159,47 @@ export function Navbar() {
                                hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                   >
                     <Settings className="w-4 h-4 text-gray-400" />
-                    Settings
+                    সেটিংস
                   </Link>
 
                   <div className="border-t border-gray-100 dark:border-gray-800" />
 
-                  {/* Logout */}
                   <button
                     onClick={handleLogout}
                     className="w-full flex items-center gap-3 px-4 py-3 text-sm
-                               text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20
-                               transition-colors"
+                               text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                   >
                     <LogOut className="w-4 h-4" />
-                    Log out
+                    লগআউট
                   </button>
                 </div>
               )}
             </div>
           ) : (
-            <Link href="/login" className="btn-primary text-sm">
-              Log in
-            </Link>
+            <Link href="/login" className="btn-primary text-sm">লগইন</Link>
           )}
         </div>
       </div>
+
+      {/* Mobile search overlay */}
+      {searchOpen && (
+        <div className="sm:hidden absolute inset-x-0 top-0 h-14 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2 px-3 z-10">
+          <form onSubmit={handleSearchSubmit} className="flex-1 flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-xl px-3 py-2">
+            <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
+            <input
+              ref={searchRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search UmmahNet..."
+              className="flex-1 bg-transparent text-sm text-gray-700 dark:text-gray-200 placeholder:text-gray-400 outline-none"
+            />
+          </form>
+          <button onClick={() => { setSearchOpen(false); setSearchQuery(""); }} className="p-2 text-gray-500">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      )}
     </header>
   );
 }

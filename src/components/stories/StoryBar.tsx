@@ -12,7 +12,7 @@ export function StoryBar() {
   const { user, profile }               = useAuthStore();
   const { groups, loading, markViewed } = useStories();
   const createStory                     = useCreateStory();
-  const [viewerOpen, setViewerOpen]     = useState(false);
+  const [viewerOpen,  setViewerOpen]    = useState(false);
   const [viewerGroup, setViewerGroup]   = useState(0);
   const fileRef                         = useRef<HTMLInputElement>(null);
 
@@ -23,12 +23,10 @@ export function StoryBar() {
     e.target.value = "";
   }
 
-  function openViewer(idx: number) {
-    setViewerGroup(idx);
-    setViewerOpen(true);
-  }
-
   if (!profile) return null;
+
+  // Index-safe own group finder for viewer
+  const ownIdx = groups.findIndex((g) => g.authorId === user?.uid);
 
   return (
     <>
@@ -50,9 +48,13 @@ export function StoryBar() {
                 <>
                   {profile.photoURL ? (
                     <Image src={profile.photoURL} alt="" fill className="object-cover rounded-full" />
-                  ) : null}
+                  ) : (
+                    <span className="text-lg font-bold text-primary-600">
+                      {profile.displayName?.[0]?.toUpperCase() ?? "U"}
+                    </span>
+                  )}
                   <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-primary-600
-                                  rounded-full flex items-center justify-center border-2 border-white">
+                                  rounded-full flex items-center justify-center border-2 border-white dark:border-gray-900">
                     <Plus className="w-3 h-3 text-white" />
                   </div>
                 </>
@@ -64,23 +66,22 @@ export function StoryBar() {
           </div>
           <input ref={fileRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFile} />
 
-          {/* Loading skeletons */}
+          {/* Loading skeletons — max 3 seconds timeout via CSS */}
           {loading && Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="flex flex-col items-center gap-1.5 flex-shrink-0 w-16">
               <div className="w-14 h-14 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
-              <div className="w-12 h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
+              <div className="w-10 h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
             </div>
           ))}
 
-          {/* Story groups */}
+          {/* Story groups (others only) */}
           {!loading && groups.map((group, idx) => {
-            // skip own stories in list (already shown as "আপনার স্টোরি")
             if (group.authorId === user?.uid) return null;
             return (
               <div
                 key={group.authorId}
                 className="flex flex-col items-center gap-1.5 flex-shrink-0 w-16 cursor-pointer"
-                onClick={() => openViewer(idx)}
+                onClick={() => { setViewerGroup(idx); setViewerOpen(true); }}
               >
                 <div className={cn(
                   "w-14 h-14 rounded-full p-0.5",
@@ -93,8 +94,7 @@ export function StoryBar() {
                       <Image
                         src={group.authorPhoto}
                         alt={group.authorName}
-                        width={52}
-                        height={52}
+                        width={52} height={52}
                         className="object-cover w-full h-full"
                       />
                     ) : (
@@ -105,8 +105,7 @@ export function StoryBar() {
                     )}
                   </div>
                 </div>
-                <span className="text-xs text-gray-700 dark:text-gray-300 text-center
-                                 leading-tight w-full truncate text-center">
+                <span className="text-xs text-gray-700 dark:text-gray-300 text-center leading-tight w-full truncate">
                   {group.authorName.split(" ")[0]}
                 </span>
               </div>
