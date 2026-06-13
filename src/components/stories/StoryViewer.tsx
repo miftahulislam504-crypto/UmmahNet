@@ -22,7 +22,7 @@ export function StoryViewer({ groups, initialGroup, onClose, onView }: Props) {
   const [storyIdx,  setStoryIdx]        = useState(0);
   const [progress,  setProgress]        = useState(0);
   const [paused,    setPaused]          = useState(false);
-  const intervalRef                     = useRef<ReturnType<typeof setInterval>>();
+  const intervalRef                     = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
   const group   = groups[groupIdx];
   const story   = group?.stories[storyIdx];
