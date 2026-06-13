@@ -1,12 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, User, AtSign } from "lucide-react";
 import { Input }  from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { registerWithEmail, loginWithGoogle } from "@/services/authService";
+import {
+  registerWithEmail,
+  loginWithGoogle,
+  handleGoogleRedirectResult,
+  waitForSessionCookie,
+} from "@/services/authService";
 import toast from "react-hot-toast";
 
 export default function RegisterPage() {
@@ -21,6 +26,21 @@ export default function RegisterPage() {
   const [loading,  setLoading]  = useState(false);
   const [gLoading, setGLoading] = useState(false);
   const [errors,   setErrors]   = useState<Record<string, string>>({});
+
+  // Google redirect result handle (mobile)
+  useEffect(() => {
+    setGLoading(true);
+    handleGoogleRedirectResult()
+      .then(async (user) => {
+        if (user) {
+          toast.success("স্বাগতম!");
+          await waitForSessionCookie();
+          router.push("/");
+        }
+      })
+      .catch(() => toast.error("Google লগইন ব্যর্থ হয়েছে"))
+      .finally(() => setGLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function validate() {
     const e: Record<string, string> = {};
@@ -43,6 +63,7 @@ export default function RegisterPage() {
     try {
       await registerWithEmail(form.email, form.password, form.displayName, form.username);
       toast.success("অ্যাকাউন্ট তৈরি হয়েছে! স্বাগতম 🎉");
+      await waitForSessionCookie();
       router.push("/");
     } catch (err: any) {
       const msg =
@@ -59,11 +80,14 @@ export default function RegisterPage() {
     setGLoading(true);
     try {
       await loginWithGoogle();
+      // Desktop popup সফল হলে
       toast.success("স্বাগতম!");
+      await waitForSessionCookie();
       router.push("/");
-    } catch {
-      toast.error("Google লগইন ব্যর্থ হয়েছে");
-    } finally {
+    } catch (err: any) {
+      if (err?.code !== "auth/popup-closed-by-user") {
+        toast.error("Google লগইন ব্যর্থ হয়েছে");
+      }
       setGLoading(false);
     }
   }

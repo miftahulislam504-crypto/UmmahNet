@@ -1,20 +1,49 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Mail, Lock } from "lucide-react";
 import { Input }  from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { loginWithEmail, loginWithGoogle } from "@/services/authService";
+import {
+  loginWithEmail,
+  loginWithGoogle,
+  handleGoogleRedirectResult,
+  waitForSessionCookie,
+} from "@/services/authService";
 import toast from "react-hot-toast";
 
 export default function LoginPage() {
-  const router = useRouter();
-  const [form, setForm]       = useState({ email: "", password: "" });
-  const [loading, setLoading] = useState(false);
+  const router       = useRouter();
+  const searchParams = useSearchParams();
+  const from         = searchParams.get("from") ?? "/";
+
+  const [form, setForm]         = useState({ email: "", password: "" });
+  const [loading, setLoading]   = useState(false);
   const [gLoading, setGLoading] = useState(false);
 
+  // ─── FIX: Google Redirect result handle ────────────────────────────────────
+  // Mobile-এ signInWithRedirect ব্যবহার হয়।
+  // Page reload হওয়ার পর এই useEffect redirect result চেক করে।
+  useEffect(() => {
+    setGLoading(true);
+    handleGoogleRedirectResult()
+      .then(async (user) => {
+        if (user) {
+          toast.success("স্বাগতম!");
+          await waitForSessionCookie();
+          router.push(from);
+        }
+      })
+      .catch(() => toast.error("Google লগইন ব্যর্থ হয়েছে"))
+      .finally(() => setGLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── FIX: Email login redirect ─────────────────────────────────────────────
+  // waitForSessionCookie() — cookie set হওয়ার পর redirect।
+  // আগে cookie set হওয়ার আগেই router.push() হত,
+  // middleware session না পেয়ে আবার /login-এ পাঠাত।
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.email || !form.password) return toast.error("সব ঘর পূরণ করুন");
@@ -23,7 +52,8 @@ export default function LoginPage() {
     try {
       await loginWithEmail(form.email, form.password);
       toast.success("স্বাগতম! লগইন সফল হয়েছে");
-      router.push("/");
+      await waitForSessionCookie();
+      router.push(from);
     } catch (err: any) {
       const msg =
         err.code === "auth/invalid-credential"
@@ -38,14 +68,23 @@ export default function LoginPage() {
   async function handleGoogle() {
     setGLoading(true);
     try {
+      // Desktop-এ popup — user সাথে সাথে পায়; redirect করা যায়।
+      // Mobile-এ redirect — page চলে যাবে, useEffect handle করবে।
       await loginWithGoogle();
+
+      // Desktop popup সফল হলেই এখানে আসবে
       toast.success("স্বাগতম!");
-      router.push("/");
-    } catch {
-      toast.error("Google লগইন ব্যর্থ হয়েছে");
-    } finally {
+      await waitForSessionCookie();
+      router.push(from);
+    } catch (err: any) {
+      // Mobile redirect হলে error আসে না — page চলে যায়
+      // popup cancel হলে auth/popup-closed-by-user আসে
+      if (err?.code !== "auth/popup-closed-by-user") {
+        toast.error("Google লগইন ব্যর্থ হয়েছে");
+      }
       setGLoading(false);
     }
+    // Note: mobile redirect-এ finally চলে না — page reload হয়
   }
 
   return (
@@ -88,7 +127,6 @@ export default function LoginPage() {
         <hr className="flex-1 border-gray-200 dark:border-gray-700" />
       </div>
 
-      {/* Google button */}
       <button
         onClick={handleGoogle}
         disabled={gLoading}

@@ -2,6 +2,8 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   updateProfile,
   onIdTokenChanged,
@@ -16,9 +18,7 @@ import {
 import { auth, db, googleProvider } from "@/lib/firebase/config";
 import type { UserProfile } from "@/types";
 
-// ─── Session cookie helper ─────────────────────────────────────────────────────
-// FIX: Secure flag যোগ করা হয়েছে — production-এ HTTPS ছাড়া cookie set হবে না।
-// আগে HTTP-তেও cookie চলে যেত, man-in-the-middle attack possible ছিল।
+// ─── Session cookie helper ────────────────────────────────────────────────────
 function setSessionCookie(token: string) {
   const isProduction = process.env.NODE_ENV === "production";
   const secure       = isProduction ? "; Secure" : "";
@@ -29,9 +29,32 @@ function clearSessionCookie() {
   document.cookie = "un_session=; path=/; max-age=0; SameSite=Strict";
 }
 
-// ─── Critical Fix: Session cookie sync ────────────────────────────────────────
-// initSessionSync() একটা explicit function —
-// শুধু browser-এ, client component mount হওয়ার পর call হবে।
+// ─── FIX: Cookie set হওয়ার পর resolve করা Promise ──────────────────────────
+// আগে loginWithEmail() শেষ হলেই router.push("/") call হত,
+// কিন্তু onIdTokenChanged async — cookie তখনো set হয়নি।
+// middleware un_session না পেয়ে আবার /login-এ redirect করত।
+// এই function cookie set হওয়া পর্যন্ত wait করে।
+export function waitForSessionCookie(timeoutMs = 5000): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === "undefined") return resolve();
+
+    const deadline = Date.now() + timeoutMs;
+
+    const check = () => {
+      const hasCookie = document.cookie
+        .split(";")
+        .some((c) => c.trim().startsWith("un_session="));
+
+      if (hasCookie) return resolve();
+      if (Date.now() > deadline) return reject(new Error("Session cookie timeout"));
+      setTimeout(check, 50);
+    };
+
+    check();
+  });
+}
+
+// ─── Session sync ─────────────────────────────────────────────────────────────
 let sessionSyncInitialized = false;
 
 export function initSessionSync(): void {
@@ -45,13 +68,33 @@ export function initSessionSync(): void {
         const token = await user.getIdToken();
         setSessionCookie(token);
       } catch {
-        // token fetch ব্যর্থ হলে session clear করো
         clearSessionCookie();
       }
     } else {
       clearSessionCookie();
     }
   });
+}
+
+// ─── FIX: Google Redirect result handle ──────────────────────────────────────
+// Mobile browser-এ signInWithPopup block হয়।
+// signInWithRedirect ব্যবহার করতে হয় এবং page reload হওয়ার পর
+// getRedirectResult() দিয়ে result নিতে হয়।
+export async function handleGoogleRedirectResult(): Promise<User | null> {
+  try {
+    const result = await getRedirectResult(auth);
+    if (!result) return null;
+
+    const { user } = result;
+    const snap = await getDoc(doc(db, "users", user.uid));
+    if (!snap.exists()) {
+      const username = user.email?.split("@")[0] ?? `user_${user.uid.slice(0, 6)}`;
+      await createUserDocument(user, { username });
+    }
+    return user;
+  } catch {
+    return null;
+  }
 }
 
 // ─── Register ─────────────────────────────────────────────────────────────────
@@ -77,14 +120,21 @@ export async function loginWithEmail(
 }
 
 // ─── Google ───────────────────────────────────────────────────────────────────
-export async function loginWithGoogle(): Promise<User> {
-  const { user } = await signInWithPopup(auth, googleProvider);
-  const snap = await getDoc(doc(db, "users", user.uid));
-  if (!snap.exists()) {
-    const username = user.email?.split("@")[0] ?? `user_${user.uid.slice(0, 6)}`;
-    await createUserDocument(user, { username });
+// Desktop-এ popup, mobile-এ redirect ব্যবহার করে।
+export async function loginWithGoogle(): Promise<void> {
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  if (isMobile) {
+    // redirect: page চলে যাবে, ফিরে এলে handleGoogleRedirectResult() handle করবে
+    await signInWithRedirect(auth, googleProvider);
+  } else {
+    const { user } = await signInWithPopup(auth, googleProvider);
+    const snap = await getDoc(doc(db, "users", user.uid));
+    if (!snap.exists()) {
+      const username = user.email?.split("@")[0] ?? `user_${user.uid.slice(0, 6)}`;
+      await createUserDocument(user, { username });
+    }
   }
-  return user;
 }
 
 // ─── Logout ───────────────────────────────────────────────────────────────────
