@@ -98,7 +98,8 @@ export async function viewStory(storyId: string, viewerId: string): Promise<void
 // FIX: removed compound orderBy (expiresAt + createdAt) which needed a
 // composite index. Now only orderBy expiresAt, sort createdAt client-side.
 export function subscribeToStories(
-  callback: (groups: StoryGroup[]) => void
+  callback: (groups: StoryGroup[]) => void,
+  onError?: (err: Error) => void
 ): Unsubscribe {
   const now = Timestamp.now();
   const q   = query(
@@ -107,27 +108,38 @@ export function subscribeToStories(
     orderBy("expiresAt", "asc")
   );
 
-  return onSnapshot(q, (snap) => {
-    const stories = snap.docs
-      .map((d) => ({ id: d.id, ...d.data() } as Story))
-      .sort((a, b) => a.createdAt?.toMillis() - b.createdAt?.toMillis());
+  return onSnapshot(
+    q,
+    (snap) => {
+      const stories = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() } as Story))
+        .sort((a, b) => a.createdAt?.toMillis() - b.createdAt?.toMillis());
 
-    const map = new Map<string, StoryGroup>();
-    for (const story of stories) {
-      if (!map.has(story.authorId)) {
-        map.set(story.authorId, {
-          authorId:    story.authorId,
-          authorName:  story.authorName,
-          authorPhoto: story.authorPhoto,
-          stories:     [],
-          hasUnviewed: false,
-        });
+      const map = new Map<string, StoryGroup>();
+      for (const story of stories) {
+        if (!map.has(story.authorId)) {
+          map.set(story.authorId, {
+            authorId:    story.authorId,
+            authorName:  story.authorName,
+            authorPhoto: story.authorPhoto,
+            stories:     [],
+            hasUnviewed: false,
+          });
+        }
+        map.get(story.authorId)!.stories.push(story);
       }
-      map.get(story.authorId)!.stories.push(story);
-    }
 
-    callback(Array.from(map.values()));
-  });
+      callback(Array.from(map.values()));
+    },
+    // BUG FIX: previously no error callback — a permission-denied or
+    // network error left the listener silently dead, so `loading` in
+    // useStories() stayed true forever and StoryBar showed endless
+    // skeleton placeholders with no feedback.
+    (err) => {
+      console.error("subscribeToStories error:", err);
+      onError?.(err as unknown as Error);
+    }
+  );
 }
 
 // ─── Get stories by user ──────────────────────────────────────────────────────

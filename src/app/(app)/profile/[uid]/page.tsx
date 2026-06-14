@@ -52,6 +52,7 @@ export default function ProfilePage() {
   const router                = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState<string | null>(null);
   const [tab, setTab]         = useState<ProfileTab>("posts");
   const [coverLoading, setCoverLoading] = useState(false);
   const { start, loading: startingConv } = useStartConversation();
@@ -67,10 +68,28 @@ export default function ProfilePage() {
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, "users", uid), (snap) => {
-      setProfile(snap.exists() ? (snap.data() as UserProfile) : null);
-      setLoading(false);
-    });
+    setError(null);
+    setLoading(true);
+    const unsub = onSnapshot(
+      doc(db, "users", uid),
+      (snap) => {
+        setProfile(snap.exists() ? (snap.data() as UserProfile) : null);
+        setLoading(false);
+      },
+      // BUG FIX: previously no error handler — a permission-denied (e.g.
+      // stale Firestore rules) or network error left `loading` true
+      // forever, so clicking on another user's profile just spun forever
+      // with no profile and no message ("profile click does nothing").
+      (err) => {
+        console.error("Profile load error:", err);
+        setError(
+          err.code === "permission-denied"
+            ? "এই প্রোফাইল দেখার অনুমতি নেই — Firestore rules আপডেট/পাবলিশ করা হয়েছে কিনা চেক করুন"
+            : "প্রোফাইল লোড করা যায়নি, আবার চেষ্টা করুন"
+        );
+        setLoading(false);
+      }
+    );
     return () => unsub();
   }, [uid]);
 
@@ -110,6 +129,13 @@ export default function ProfilePage() {
   if (loading) return (
     <div className="flex justify-center py-20">
       <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+    </div>
+  );
+
+  if (error) return (
+    <div className="card p-12 text-center">
+      <p className="font-medium text-red-500 mb-1">প্রোফাইল লোড হয়নি</p>
+      <p className="text-sm text-gray-500">{error}</p>
     </div>
   );
 

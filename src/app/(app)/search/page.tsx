@@ -15,14 +15,27 @@ function SearchContent() {
   const [query, setQuery]     = useState(searchParams.get("q") ?? "");
   const [results, setResults] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
 
   useEffect(() => {
-    if (!query.trim() || !user) { setResults([]); return; }
+    if (!query.trim() || !user) { setResults([]); setError(null); return; }
     const timer = setTimeout(async () => {
       setLoading(true);
+      setError(null);
       try {
         const res = await searchUsers(query, user.uid);
         setResults(res);
+      } catch (err: any) {
+        // BUG FIX: previously no catch — a permission/network error left
+        // `results` empty with zero feedback, indistinguishable from a
+        // genuine "no user found" — this surfaces the real cause.
+        console.error("searchUsers error:", err);
+        setError(
+          err?.code === "permission-denied"
+            ? "সার্চ করার অনুমতি নেই — Firestore rules চেক করুন"
+            : "সার্চ করতে সমস্যা হয়েছে, আবার চেষ্টা করুন"
+        );
+        setResults([]);
       } finally {
         setLoading(false);
       }
@@ -72,7 +85,13 @@ function SearchContent() {
         </div>
       )}
 
-      {query.trim() && !loading && results.length === 0 && (
+      {error && (
+        <div className="card p-8 text-center">
+          <p className="text-red-500 text-sm">{error}</p>
+        </div>
+      )}
+
+      {query.trim() && !loading && !error && results.length === 0 && (
         <div className="card p-12 text-center">
           <Users className="w-8 h-8 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500 text-sm">

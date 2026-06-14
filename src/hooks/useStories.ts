@@ -15,25 +15,34 @@ export function useStories() {
   const { user }                        = useAuthStore();
   const [groups,  setGroups]            = useState<StoryGroup[]>([]);
   const [loading, setLoading]           = useState(true);
+  const [error,   setError]             = useState<string | null>(null);
 
   useEffect(() => {
-    const unsub = subscribeToStories((data) => {
-      if (user) {
-        // mark hasUnviewed
-        const enriched = data.map((g) => ({
-          ...g,
-          hasUnviewed: g.stories.some((s) => !s.viewerIds.includes(user.uid)),
-        }));
-        // own stories first
-        enriched.sort((a, b) =>
-          a.authorId === user.uid ? -1 : b.authorId === user.uid ? 1 : 0
-        );
-        setGroups(enriched);
-      } else {
-        setGroups(data);
+    setError(null);
+    const unsub = subscribeToStories(
+      (data) => {
+        if (user) {
+          // mark hasUnviewed
+          const enriched = data.map((g) => ({
+            ...g,
+            hasUnviewed: g.stories.some((s) => !s.viewerIds.includes(user.uid)),
+          }));
+          // own stories first
+          enriched.sort((a, b) =>
+            a.authorId === user.uid ? -1 : b.authorId === user.uid ? 1 : 0
+          );
+          setGroups(enriched);
+        } else {
+          setGroups(data);
+        }
+        setLoading(false);
+      },
+      // BUG FIX: surface the error instead of leaving loading=true forever
+      () => {
+        setError("Stories লোড করা যায়নি");
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    );
     return () => unsub();
   }, [user]);
 
@@ -45,7 +54,7 @@ export function useStories() {
     [user]
   );
 
-  return { groups, loading, markViewed };
+  return { groups, loading, error, markViewed };
 }
 
 export function useCreateStory() {

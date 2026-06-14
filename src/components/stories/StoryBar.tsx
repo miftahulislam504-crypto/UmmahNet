@@ -17,7 +17,7 @@ const AVA    = 40;   // avatar wrapper width/height (px), incl. ring padding
 
 export function StoryBar() {
   const { user, profile }               = useAuthStore();
-  const { groups, loading, markViewed } = useStories();
+  const { groups, loading, error, markViewed } = useStories();
   const createStory                     = useCreateStory();
   const [viewerOpen,  setViewerOpen]    = useState(false);
   const [viewerGroup, setViewerGroup]   = useState(0);
@@ -37,55 +37,74 @@ export function StoryBar() {
       <div className="bg-white dark:bg-gray-900 px-3 py-3 border-b border-gray-100 dark:border-gray-800">
         <div className="flex gap-3 overflow-x-auto scrollbar-hide">
 
-          {/* ── Add Story ── */}
-          <button
-            onClick={() => fileRef.current?.click()}
-            disabled={createStory.isPending}
-            className="flex-shrink-0 flex flex-col items-center select-none"
-            style={{ width: CARD_W }}
-          >
-            <div className="relative" style={{ width: CARD_W }}>
-              {/* Square card */}
-              <div
-                className="rounded-2xl overflow-hidden relative bg-gray-100 dark:bg-gray-800
-                           ring-1 ring-gray-200 dark:ring-gray-700"
-                style={{ width: CARD_W, height: CARD_H }}
-              >
-                {profile.photoURL ? (
-                  <Image src={profile.photoURL} alt="" fill className="object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center
-                                  bg-gradient-to-br from-primary-100 to-primary-200
-                                  dark:from-gray-700 dark:to-gray-800" />
-                )}
-                <div className="absolute inset-0 bg-black/15" />
-              </div>
+          {/* ── Your Story / Add Story ── */}
+          {/* BUG FIX: previously the user's own group was filtered out of the
+              list entirely (return null), so a just-published story never
+              appeared anywhere — only the generic "+" button stayed visible.
+              Now: if the user has an active story, its latest cover shows
+              here and tapping it opens the viewer; the "+" badge always
+              opens the picker to add another. */}
+          {(() => {
+            const myIdx   = groups.findIndex((g) => g.authorId === user?.uid);
+            const myGroup = myIdx >= 0 ? groups[myIdx] : null;
+            const myCover = myGroup?.stories[myGroup.stories.length - 1]?.mediaUrl;
 
-              {/* Avatar — center point sits on the card's bottom edge */}
-              <div
-                className="absolute left-1/2 top-full -translate-x-1/2 -translate-y-1/2 z-10
-                           rounded-full p-[2px] bg-white dark:bg-gray-900 shadow"
-                style={{ width: AVA, height: AVA }}
-              >
-                <div className="w-full h-full rounded-full bg-primary-600
-                                flex items-center justify-center overflow-hidden">
-                  {createStory.isPending
-                    ? <Loader2 className="w-4 h-4 text-white animate-spin" />
-                    : <Plus className="w-4 h-4 text-white" strokeWidth={3} />
-                  }
+            return (
+              <div className="flex-shrink-0 flex flex-col items-center select-none" style={{ width: CARD_W }}>
+                <div className="relative" style={{ width: CARD_W }}>
+                  {/* Square card */}
+                  <button
+                    onClick={() => {
+                      if (myGroup) { setViewerGroup(myIdx); setViewerOpen(true); }
+                      else fileRef.current?.click();
+                    }}
+                    className={cn(
+                      "block w-full rounded-2xl overflow-hidden relative bg-gray-100 dark:bg-gray-800",
+                      myGroup ? "ring-2 ring-primary-500" : "ring-1 ring-gray-200 dark:ring-gray-700"
+                    )}
+                    style={{ height: CARD_H }}
+                  >
+                    {myCover ? (
+                      <Image src={myCover} alt="" fill className="object-cover" />
+                    ) : profile.photoURL ? (
+                      <Image src={profile.photoURL} alt="" fill className="object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center
+                                      bg-gradient-to-br from-primary-100 to-primary-200
+                                      dark:from-gray-700 dark:to-gray-800" />
+                    )}
+                    <div className="absolute inset-0 bg-black/15" />
+                  </button>
+
+                  {/* "+" badge — always opens the picker to add a new story */}
+                  <button
+                    onClick={() => fileRef.current?.click()}
+                    disabled={createStory.isPending}
+                    className="absolute left-1/2 top-full -translate-x-1/2 -translate-y-1/2 z-10
+                               rounded-full p-[2px] bg-white dark:bg-gray-900 shadow"
+                    style={{ width: AVA, height: AVA }}
+                  >
+                    <div className="w-full h-full rounded-full bg-primary-600
+                                    flex items-center justify-center overflow-hidden">
+                      {createStory.isPending
+                        ? <Loader2 className="w-4 h-4 text-white animate-spin" />
+                        : <Plus className="w-4 h-4 text-white" strokeWidth={3} />
+                      }
+                    </div>
+                  </button>
                 </div>
-              </div>
-            </div>
 
-            {/* Label */}
-            <span
-              className="mt-6 text-[11px] font-medium text-gray-700 dark:text-gray-300
-                         text-center leading-tight truncate"
-              style={{ width: CARD_W }}
-            >
-              Add story
-            </span>
-          </button>
+                {/* Label */}
+                <span
+                  className="mt-6 text-[11px] font-medium text-gray-700 dark:text-gray-300
+                             text-center leading-tight truncate"
+                  style={{ width: CARD_W }}
+                >
+                  {myGroup ? "Your story" : "Add story"}
+                </span>
+              </div>
+            );
+          })()}
 
           <input
             ref={fileRef}
@@ -96,7 +115,7 @@ export function StoryBar() {
           />
 
           {/* ── Loading skeletons ── */}
-          {loading && Array.from({ length: 4 }).map((_, i) => (
+          {loading && !error && Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="flex-shrink-0 flex flex-col items-center" style={{ width: CARD_W }}>
               <div
                 className="rounded-2xl bg-gray-200 dark:bg-gray-700 animate-pulse"
@@ -106,8 +125,19 @@ export function StoryBar() {
             </div>
           ))}
 
+          {/* ── Load error — was previously an endless skeleton ── */}
+          {error && (
+            <div
+              className="flex-shrink-0 flex items-center justify-center text-center
+                         text-[11px] text-red-500 px-2 rounded-2xl bg-red-50 dark:bg-red-950/30"
+              style={{ width: CARD_W, height: CARD_H }}
+            >
+              {error}
+            </div>
+          )}
+
           {/* ── Story cards ── */}
-          {!loading && groups.map((group, idx) => {
+          {!loading && !error && groups.map((group, idx) => {
             if (group.authorId === user?.uid) return null;
             const hasNew  = group.hasUnviewed;
             const cover   = group.stories[group.stories.length - 1]?.mediaUrl;
