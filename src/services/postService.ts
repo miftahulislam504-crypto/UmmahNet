@@ -6,7 +6,6 @@ import {
   getDoc,
   getDocs,
   updateDoc,
-  setDoc,
   query,
   where,
   orderBy,
@@ -19,11 +18,30 @@ import {
   type QueryDocumentSnapshot,
   type Unsubscribe,
 } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
-import { db, storage } from "@/lib/firebase/config";
+import { db } from "@/lib/firebase/config";
 import type { Post, Comment } from "@/types";
 
 const PAGE_SIZE = 10;
+
+// ─── File → Base64 (max 1080px, quality 0.85) ────────────────────────────────
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const MAX = 1080;
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width  = img.width  * scale;
+      canvas.height = img.height * scale;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", 0.85));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
 
 // ─── Create Post ──────────────────────────────────────────────────────────────
 export async function createPost(
@@ -34,15 +52,11 @@ export async function createPost(
   mediaFiles:  File[],
   visibility:  Post["visibility"] = "public"
 ): Promise<string> {
-  // Upload media first
+  // Convert all images to Base64
   const mediaUrls: string[] = [];
   for (const file of mediaFiles) {
-    const ext      = file.name.split(".").pop();
-    const path     = `posts/images/${authorId}_${Date.now()}.${ext}`;
-    const storRef  = ref(storage, path);
-    await uploadBytes(storRef, file);
-    const url = await getDownloadURL(storRef);
-    mediaUrls.push(url);
+    const base64 = await fileToBase64(file);
+    mediaUrls.push(base64);
   }
 
   const type: Post["type"] = mediaFiles.length > 0 ? "image" : "text";
@@ -61,9 +75,7 @@ export async function createPost(
     createdAt: serverTimestamp(),
   });
 
-  // Increment user postsCount
   await updateDoc(doc(db, "users", authorId), { postsCount: increment(1) });
-
   return ref2.id;
 }
 
@@ -76,10 +88,7 @@ export async function deletePost(postId: string, authorId: string): Promise<void
 }
 
 // ─── Like / Unlike ────────────────────────────────────────────────────────────
-export async function toggleLike(
-  postId: string,
-  userId: string
-): Promise<boolean> {
+export async function toggleLike(postId: string, userId: string): Promise<boolean> {
   const likeId  = `${postId}_${userId}`;
   const likeRef = doc(db, "likes", likeId);
   const snap    = await getDoc(likeRef);
@@ -89,7 +98,7 @@ export async function toggleLike(
     batch.delete(likeRef);
     batch.update(doc(db, "posts", postId), { likesCount: increment(-1) });
     await batch.commit();
-    return false; // unliked
+    return false;
   } else {
     batch.set(likeRef, {
       postId,
@@ -100,7 +109,7 @@ export async function toggleLike(
     });
     batch.update(doc(db, "posts", postId), { likesCount: increment(1) });
     await batch.commit();
-    return true; // liked
+    return true;
   }
 }
 
@@ -155,7 +164,7 @@ export function subscribeToComments(
   );
 }
 
-// ─── Public Feed (paginated) ──────────────────────────────────────────────────
+// ─── Public Feed ──────────────────────────────────────────────────────────────
 export async function getPublicFeed(
   lastDoc?: QueryDocumentSnapshot
 ): Promise<{ posts: (Post & { id: string })[]; lastDoc: QueryDocumentSnapshot | null }> {
@@ -173,9 +182,9 @@ export async function getPublicFeed(
   };
 }
 
-// ─── User Posts (for profile) ─────────────────────────────────────────────────
+// ─── User Posts ───────────────────────────────────────────────────────────────
 export async function getUserPosts(
-  uid:     string,
+  uid:      string,
   lastDoc?: QueryDocumentSnapshot
 ): Promise<{ posts: (Post & { id: string })[]; lastDoc: QueryDocumentSnapshot | null }> {
   const constraints: any[] = [
@@ -192,7 +201,7 @@ export async function getUserPosts(
   };
 }
 
-// ─── Realtime new posts listener ──────────────────────────────────────────────
+// ─── Realtime feed listener ───────────────────────────────────────────────────
 export function subscribeToFeed(
   callback: (posts: (Post & { id: string })[]) => void
 ): Unsubscribe {
