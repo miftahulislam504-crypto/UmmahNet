@@ -11,7 +11,6 @@ import { Avatar }          from "@/components/ui/Avatar";
 import { Button }          from "@/components/ui/Button";
 import { PostCard }        from "@/components/feed/PostCard";
 import { PostSkeleton }    from "@/components/feed/PostSkeleton";
-import { EditProfileModal } from "@/components/profile/EditProfileModal";
 import { FriendButton }    from "@/components/friends/FriendButton";
 import { useUserPosts }    from "@/hooks/usePosts";
 import { useStartConversation } from "@/hooks/useChat";
@@ -53,7 +52,6 @@ export default function ProfilePage() {
   const router                = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
   const [tab, setTab]         = useState<ProfileTab>("posts");
   const [coverLoading, setCoverLoading] = useState(false);
   const { start, loading: startingConv } = useStartConversation();
@@ -171,7 +169,7 @@ export default function ProfilePage() {
                 />
                 {isOwner && (
                   <button
-                    onClick={() => setEditing(true)}
+                    onClick={() => router.push("/settings/edit-profile")}
                     className="absolute bottom-0.5 right-0.5 w-7 h-7
                                bg-gray-100 dark:bg-gray-700 hover:bg-gray-200
                                dark:hover:bg-gray-600 rounded-full
@@ -185,7 +183,7 @@ export default function ProfilePage() {
               {/* Action buttons */}
               <div className="flex gap-2 pb-1">
                 {isOwner ? (
-                  <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+                  <Button variant="outline" size="sm" onClick={() => router.push("/settings/edit-profile")}>
                     <Pencil className="w-3.5 h-3.5" />
                     Edit profile
                   </Button>
@@ -305,9 +303,6 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {editing && (
-        <EditProfileModal profile={profile} onClose={() => setEditing(false)} />
-      )}
     </>
   );
 }
