@@ -62,9 +62,12 @@ export function useStories() {
           setGroups(enriched);
           setLoading(false);
         },
-        // BUG FIX: surface the error instead of leaving loading=true forever
-        () => {
-          setError("Stories লোড করা যায়নি");
+        // BUG FIX: surface the error instead of leaving loading=true forever.
+        // Include err.code/err.message — Firestore "missing index" errors
+        // (FAILED_PRECONDITION) embed a console link to auto-create the
+        // exact index needed, which the user can read/copy on mobile.
+        (err: any) => {
+          setError(`${err?.code ?? "error"}: ${err?.message ?? String(err)}`);
           setLoading(false);
         }
       );

@@ -125,17 +125,6 @@ export function StoryBar() {
             </div>
           ))}
 
-          {/* ── Load error — was previously an endless skeleton ── */}
-          {error && (
-            <div
-              className="flex-shrink-0 flex items-center justify-center text-center
-                         text-[11px] text-red-500 px-2 rounded-2xl bg-red-50 dark:bg-red-950/30"
-              style={{ width: CARD_W, height: CARD_H }}
-            >
-              {error}
-            </div>
-          )}
-
           {/* ── Story cards ── */}
           {!loading && !error && groups.map((group, idx) => {
             if (group.authorId === user?.uid) return null;
@@ -215,6 +204,18 @@ export function StoryBar() {
             );
           })}
         </div>
+
+        {error && (
+          <div className="mt-2 rounded-xl bg-red-50 dark:bg-red-950/30 px-3 py-2">
+            <p className="text-[11px] font-medium text-red-600 dark:text-red-400 mb-1">
+              Stories লোড করা যায়নি — নিচের error থেকে কারণ দেখুন
+              (যদি একটা link থাকে, সেটাতে গিয়ে index তৈরি করুন):
+            </p>
+            <p className="text-[11px] text-red-500 break-all select-all font-mono">
+              {error}
+            </p>
+          </div>
+        )}
       </div>
 
       {viewerOpen && (
