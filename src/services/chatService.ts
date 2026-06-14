@@ -14,8 +14,7 @@ import {
   writeBatch,
   type Unsubscribe,
 } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { db, storage } from "@/lib/firebase/config";
+import { db } from "@/lib/firebase/config";
 import type { Conversation, Message } from "@/types";
 
 // ─── Get or create private conversation ──────────────────────────────────────
@@ -25,14 +24,21 @@ export async function getOrCreateConversation(
 ): Promise<string> {
   const participants = [myUid, theirUid].sort();
 
+  // BUG FIX: "==" on array doesn't work in Firestore.
+  // Use array-contains + client-side filter instead.
   const q    = query(
     collection(db, "conversations"),
-    where("participants", "==", participants),
-    where("type",         "==", "private")
+    where("participants", "array-contains", myUid),
+    where("type", "==", "private"),
+    limit(50)
   );
   const snap = await getDocs(q);
 
-  if (!snap.empty) return snap.docs[0].id;
+  const existing = snap.docs.find((d) => {
+    const p: string[] = d.data().participants ?? [];
+    return p.includes(theirUid) && p.length === 2;
+  });
+  if (existing) return existing.id;
 
   const ref2 = await addDoc(collection(db, "conversations"), {
     participants,
@@ -53,10 +59,13 @@ export async function sendMessage(
 ): Promise<void> {
   let mediaUrl = "";
   if (imageFile) {
-    const path    = `chat/images/${conversationId}/${Date.now()}_${imageFile.name}`;
-    const storRef = ref(storage, path);
-    await uploadBytes(storRef, imageFile);
-    mediaUrl = await getDownloadURL(storRef);
+    // Convert image to Base64 instead of Firebase Storage
+    mediaUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload  = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(imageFile);
+    });
   }
 
   const batch = writeBatch(db);
@@ -83,10 +92,6 @@ export async function sendMessage(
 }
 
 // ─── Mark messages as seen ────────────────────────────────────────────────────
-// BUG 2 FIX: previously used "senderId", "!=", myUid.
-// The != operator combined with a compound query requires a separate
-// Firestore index, which was missing from indexes.json — causing a silent crash in production.
-// Fix: dropped "!=" and filter on the client side instead.
 export async function markAsSeen(
   conversationId: string,
   myUid:          string
@@ -100,7 +105,6 @@ export async function markAsSeen(
   const snap = await getDocs(q);
   if (snap.empty) return;
 
-  // Client-side filter: only mark the other person's unseen messages
   const toMark = snap.docs.filter((d) => d.data().senderId !== myUid);
   if (toMark.length === 0) return;
 
@@ -128,6 +132,9 @@ export function subscribeToMessages(
 }
 
 // ─── Subscribe to conversation list ──────────────────────────────────────────
+// BUG FIX: removed orderBy("updatedAt") + where("type") compound query
+// which required a composite Firestore index that caused silent loading failure.
+// Now: simple array-contains query, sort client-side.
 export function subscribeToConversations(
   myUid:    string,
   callback: (convs: (Conversation & { id: string })[]) => void
@@ -135,12 +142,18 @@ export function subscribeToConversations(
   const q = query(
     collection(db, "conversations"),
     where("participants", "array-contains", myUid),
-    orderBy("updatedAt", "desc"),
     limit(30)
   );
-  return onSnapshot(q, (snap) =>
-    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Conversation & { id: string })))
-  );
+  return onSnapshot(q, (snap) => {
+    const convs = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() } as Conversation & { id: string }))
+      .sort((a, b) => {
+        const ta = (a as any).updatedAt?.toMillis?.() ?? 0;
+        const tb = (b as any).updatedAt?.toMillis?.() ?? 0;
+        return tb - ta;
+      });
+    callback(convs);
+  });
 }
 
 // ─── Get other participant's profile ─────────────────────────────────────────

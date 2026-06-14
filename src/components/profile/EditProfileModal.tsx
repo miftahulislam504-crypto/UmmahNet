@@ -3,9 +3,8 @@
 import { useState, useRef } from "react";
 import { X, Camera } from "lucide-react";
 import { doc, updateDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { updateProfile } from "firebase/auth";
-import { db, storage, auth } from "@/lib/firebase/config";
+import { db, auth } from "@/lib/firebase/config";
 import { useAuthStore } from "@/store/authStore";
 import { Avatar }  from "@/components/ui/Avatar";
 import { Input }   from "@/components/ui/Input";
@@ -18,21 +17,41 @@ interface Props {
   onClose: () => void;
 }
 
+// Image → Base64 (max 500px, quality 0.8)
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const MAX = 500;
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width  = img.width  * scale;
+      canvas.height = img.height * scale;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", 0.8));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
 export function EditProfileModal({ profile, onClose }: Props) {
   const { setProfile } = useAuthStore();
 
   const [form, setForm] = useState({
     displayName: profile.displayName,
     username:    profile.username,
-    bio:         profile.bio,
+    bio:         profile.bio ?? "",
   });
   const [loading,    setLoading]    = useState(false);
+  const [preview,    setPreview]    = useState<string>(profile.photoURL ?? "");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [preview,    setPreview]    = useState<string>(profile.photoURL);
 
   const fileRef = useRef<HTMLInputElement>(null);
 
-  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setAvatarFile(file);
@@ -44,29 +63,34 @@ export function EditProfileModal({ profile, onClose }: Props) {
     setLoading(true);
 
     try {
-      let photoURL = profile.photoURL;
+      let photoURL = profile.photoURL ?? "";
 
-      if (avatarFile && auth.currentUser) {
-        const storageRef = ref(storage, `avatars/${auth.currentUser.uid}`);
-        await uploadBytes(storageRef, avatarFile);
-        photoURL = await getDownloadURL(storageRef);
-        await updateProfile(auth.currentUser, { displayName: form.displayName, photoURL });
-      } else if (auth.currentUser) {
-        await updateProfile(auth.currentUser, { displayName: form.displayName });
+      // Convert to Base64 — no Firebase Storage needed
+      if (avatarFile) {
+        photoURL = await fileToBase64(avatarFile);
+      }
+
+      // Update Firebase Auth display name
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, {
+          displayName: form.displayName,
+          ...(avatarFile ? { photoURL } : {}),
+        });
       }
 
       const updates = {
-        displayName: form.displayName,
-        username:    form.username,
-        bio:         form.bio,
+        displayName: form.displayName.trim(),
+        username:    form.username.trim(),
+        bio:         form.bio.trim(),
         photoURL,
       };
-      await updateDoc(doc(db, "users", profile.uid), updates);
 
+      await updateDoc(doc(db, "users", profile.uid), updates);
       setProfile({ ...profile, ...updates });
-      toast.success("Profile updated");
+      toast.success("Profile updated!");
       onClose();
-    } catch {
+    } catch (err) {
+      console.error(err);
       toast.error("Update failed. Please try again.");
     } finally {
       setLoading(false);
@@ -83,11 +107,9 @@ export function EditProfileModal({ profile, onClose }: Props) {
                  bg-black/50 backdrop-blur-sm p-0 sm:p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div
-        className="card w-full sm:max-w-md p-6 shadow-2xl
-                   rounded-t-3xl sm:rounded-2xl"
-      >
-        {/* Handle bar (mobile) */}
+      <div className="card w-full sm:max-w-md p-6 shadow-2xl rounded-t-3xl sm:rounded-2xl">
+
+        {/* Handle bar */}
         <div className="w-10 h-1 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-4 sm:hidden" />
 
         {/* Header */}
@@ -139,9 +161,7 @@ export function EditProfileModal({ profile, onClose }: Props) {
             onChange={set("username")}
           />
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Bio
-            </label>
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Bio</label>
             <textarea
               value={form.bio}
               onChange={set("bio")}
