@@ -25,57 +25,50 @@ export function StoryBar() {
 
   if (!profile) return null;
 
-  const ownIdx = groups.findIndex((g) => g.authorId === user?.uid);
-
   return (
     <>
-      {/* Scrollable story bar — no card wrapper, blends into feed bg */}
-      <div className="bg-white dark:bg-gray-900 px-3 py-3 border-b border-gray-100 dark:border-gray-800">
-        <div className="flex gap-4 overflow-x-auto scrollbar-hide">
+      <div className="bg-white dark:bg-gray-900 px-3 pt-3 pb-3">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide">
 
-          {/* ── Add Story ── */}
+          {/* ── Create Story Card ── */}
           <button
             onClick={() => fileRef.current?.click()}
             disabled={createStory.isPending}
-            className="flex flex-col items-center gap-1.5 flex-shrink-0 w-[60px] group"
+            className="relative flex-shrink-0 w-[100px] h-[160px] rounded-xl overflow-hidden
+                       bg-gray-100 dark:bg-gray-800 group"
           >
-            {/* Avatar with dashed ring + plus badge */}
-            <div className="relative w-[58px] h-[58px]">
-              {/* Outer gradient placeholder (dashed when own, solid gradient when has story) */}
-              <div className="w-full h-full rounded-full p-[2.5px]
-                              bg-gradient-to-tr from-blue-400 via-blue-500 to-blue-600">
-                <div className="w-full h-full rounded-full bg-white dark:bg-gray-900 p-[2px]">
-                  <div className="w-full h-full rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800
-                                  flex items-center justify-center">
-                    {createStory.isPending ? (
-                      <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
-                    ) : profile.photoURL ? (
-                      <Image
-                        src={profile.photoURL}
-                        alt=""
-                        width={52} height={52}
-                        className="object-cover w-full h-full"
-                      />
-                    ) : (
-                      <span className="text-base font-bold text-blue-600">
-                        {profile.displayName?.[0]?.toUpperCase() ?? "U"}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
+            {/* Background: user photo or gradient */}
+            {profile.photoURL ? (
+              <Image
+                src={profile.photoURL}
+                alt=""
+                fill
+                className="object-cover brightness-75"
+              />
+            ) : (
+              <div className="absolute inset-0 bg-gradient-to-b from-gray-300 to-gray-400 dark:from-gray-700 dark:to-gray-800" />
+            )}
 
-              {/* Blue plus badge — bottom right */}
-              <div className="absolute -bottom-0.5 -right-0.5 w-[20px] h-[20px]
-                              bg-blue-500 rounded-full border-2 border-white dark:border-gray-900
-                              flex items-center justify-center shadow-sm">
-                <Plus className="w-3 h-3 text-white" strokeWidth={3} />
-              </div>
+            {/* Plus button — center top area */}
+            <div className="absolute top-[50%] left-1/2 -translate-x-1/2 -translate-y-[70%]">
+              {createStory.isPending ? (
+                <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center shadow">
+                  <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                </div>
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center
+                                border-4 border-white shadow-md">
+                  <Plus className="w-5 h-5 text-white" strokeWidth={3} />
+                </div>
+              )}
             </div>
 
-            <span className="text-[10.5px] text-gray-500 dark:text-gray-400 leading-tight text-center w-full truncate">
-              Add story
-            </span>
+            {/* Label at bottom */}
+            <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-gray-900 pt-5 pb-2 px-1">
+              <span className="text-[11px] font-semibold text-gray-900 dark:text-gray-100 text-center block leading-tight">
+                Create story
+              </span>
+            </div>
           </button>
 
           <input
@@ -87,61 +80,70 @@ export function StoryBar() {
           />
 
           {/* ── Loading skeletons ── */}
-          {loading && Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex flex-col items-center gap-1.5 flex-shrink-0 w-[60px]">
-              <div className="w-[58px] h-[58px] rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
-              <div className="w-9 h-2 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse" />
-            </div>
+          {loading && Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex-shrink-0 w-[100px] h-[160px] rounded-xl
+                         bg-gray-200 dark:bg-gray-700 animate-pulse"
+            />
           ))}
 
-          {/* ── Story groups ── */}
+          {/* ── Story cards ── */}
           {!loading && groups.map((group, idx) => {
             if (group.authorId === user?.uid) return null;
 
             return (
               <button
                 key={group.authorId}
-                className="flex flex-col items-center gap-1.5 flex-shrink-0 w-[60px]"
                 onClick={() => { setViewerGroup(idx); setViewerOpen(true); }}
+                className="relative flex-shrink-0 w-[100px] h-[160px] rounded-xl overflow-hidden
+                           bg-gray-200 dark:bg-gray-700"
               >
-                {/* Avatar */}
-                <div className="relative w-[58px] h-[58px]">
-                  {/* Gradient ring — vivid when unviewed, muted when viewed */}
-                  <div className={cn(
-                    "w-full h-full rounded-full p-[2.5px]",
-                    group.hasUnviewed
-                      ? "bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600"
-                      : "bg-gray-300 dark:bg-gray-600"
-                  )}>
-                    <div className="w-full h-full rounded-full bg-white dark:bg-gray-900 p-[2px]">
-                      <div className="w-full h-full rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700
-                                      flex items-center justify-center">
-                        {group.authorPhoto ? (
-                          <Image
-                            src={group.authorPhoto}
-                            alt={group.authorName}
-                            width={52} height={52}
-                            className="object-cover w-full h-full"
-                          />
-                        ) : (
-                          <span className="text-base font-bold text-purple-600 dark:text-purple-400">
-                            {group.authorName?.charAt(0)}
-                          </span>
-                        )}
+                {/* Story background image */}
+                {group.authorPhoto ? (
+                  <Image
+                    src={group.authorPhoto}
+                    alt={group.authorName}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-b from-purple-400 to-pink-500" />
+                )}
+
+                {/* Dark gradient overlay — bottom */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60" />
+
+                {/* Avatar — top left with ring */}
+                <div className={cn(
+                  "absolute top-2 left-2 w-9 h-9 rounded-full p-[2px]",
+                  group.hasUnviewed
+                    ? "bg-blue-500"
+                    : "bg-gray-400"
+                )}>
+                  <div className="w-full h-full rounded-full overflow-hidden border-2 border-white bg-gray-300">
+                    {group.authorPhoto ? (
+                      <Image
+                        src={group.authorPhoto}
+                        alt={group.authorName}
+                        width={32} height={32}
+                        className="object-cover w-full h-full"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center
+                                      bg-purple-500 text-white font-bold text-sm">
+                        {group.authorName?.charAt(0)}
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
 
-                {/* Name */}
-                <span className={cn(
-                  "text-[10.5px] leading-tight text-center w-full truncate",
-                  group.hasUnviewed
-                    ? "text-gray-900 dark:text-gray-100 font-semibold"
-                    : "text-gray-500 dark:text-gray-400 font-normal"
-                )}>
-                  {group.authorName.split(" ")[0]}
-                </span>
+                {/* Name — bottom */}
+                <div className="absolute bottom-2 left-1.5 right-1.5">
+                  <span className="text-white text-[11px] font-semibold leading-tight line-clamp-2 text-left drop-shadow">
+                    {group.authorName.split(" ")[0]}
+                  </span>
+                </div>
               </button>
             );
           })}
