@@ -98,12 +98,28 @@ export async function viewStory(storyId: string, viewerId: string): Promise<void
 // FIX: removed compound orderBy (expiresAt + createdAt) which needed a
 // composite index. Now only orderBy expiresAt, sort createdAt client-side.
 export function subscribeToStories(
+  myUid: string,
+  friendUids: string[],
   callback: (groups: StoryGroup[]) => void,
   onError?: (err: Error) => void
 ): Unsubscribe {
   const now = Timestamp.now();
-  const q   = query(
+
+  // PHASE 12 FIX: previously no audience filter at all — every signed-in
+  // user's stories were fetched (issue #1). Firestore `in` supports at most
+  // 30 values, so cap to self + first 29 friends for now.
+  let authorIds = [myUid, ...friendUids];
+  if (authorIds.length > 30) {
+    console.warn(
+      `subscribeToStories: ${friendUids.length} friends exceeds the 30-value ` +
+      `"in" limit — showing stories from the first 29 friends only.`
+    );
+    authorIds = authorIds.slice(0, 30);
+  }
+
+  const q = query(
     collection(db, "stories"),
+    where("authorId", "in", authorIds),
     where("expiresAt", ">", now),
     orderBy("expiresAt", "asc")
   );

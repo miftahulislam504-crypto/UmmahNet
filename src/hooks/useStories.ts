@@ -8,6 +8,7 @@ import {
   viewStory,
   type StoryGroup,
 } from "@/services/storyService";
+import { getFriends, migrateLegacyFriendships } from "@/services/friendService";
 import { useAuthStore } from "@/store/authStore";
 import toast from "react-hot-toast";
 
@@ -18,10 +19,37 @@ export function useStories() {
   const [error,   setError]             = useState<string | null>(null);
 
   useEffect(() => {
+    if (!user) {
+      setGroups([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    setLoading(true);
     setError(null);
-    const unsub = subscribeToStories(
-      (data) => {
-        if (user) {
+
+    let unsub: (() => void) | undefined;
+    let cancelled = false;
+
+    (async () => {
+      // PHASE 12: backfill deterministic friendship ids (used by the new
+      // friends-only story rules) — idempotent, fire-and-forget-safe.
+      migrateLegacyFriendships(user.uid);
+
+      let friendUids: string[] = [];
+      try {
+        const { friends } = await getFriends(user.uid, 100);
+        friendUids = friends.map((f) => f.uid);
+      } catch (err) {
+        console.error("getFriends failed:", err);
+      }
+      if (cancelled) return;
+
+      unsub = subscribeToStories(
+        user.uid,
+        friendUids,
+        (data) => {
           // mark hasUnviewed
           const enriched = data.map((g) => ({
             ...g,
@@ -32,18 +60,17 @@ export function useStories() {
             a.authorId === user.uid ? -1 : b.authorId === user.uid ? 1 : 0
           );
           setGroups(enriched);
-        } else {
-          setGroups(data);
+          setLoading(false);
+        },
+        // BUG FIX: surface the error instead of leaving loading=true forever
+        () => {
+          setError("Stories লোড করা যায়নি");
+          setLoading(false);
         }
-        setLoading(false);
-      },
-      // BUG FIX: surface the error instead of leaving loading=true forever
-      () => {
-        setError("Stories লোড করা যায়নি");
-        setLoading(false);
-      }
-    );
-    return () => unsub();
+      );
+    })();
+
+    return () => { cancelled = true; unsub?.(); };
   }, [user]);
 
   const markViewed = useCallback(

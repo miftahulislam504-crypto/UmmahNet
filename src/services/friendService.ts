@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   getDocs,
@@ -47,7 +48,9 @@ export async function acceptFriendRequest(requestId: string): Promise<void> {
   batch.update(reqRef, { status: "accepted" });
 
   const [user1, user2] = [senderId, receiverId].sort();
-  const friendshipRef  = doc(collection(db, "friendships"));
+  // PHASE 12: deterministic id (user1_user2) so firestore.rules can check
+  // "is X my friend" via exists() without running a query.
+  const friendshipRef  = doc(db, "friendships", `${user1}_${user2}`);
   batch.set(friendshipRef, { user1, user2, createdAt: serverTimestamp() });
 
   batch.update(doc(db, "users", senderId),   { friendsCount: increment(1) });
@@ -266,4 +269,29 @@ async function getFriendRequestBetween(
   );
   const snap = await getDocs(q);
   return snap.empty ? null : snap.docs[0].id;
+}
+
+// ─── Migrate legacy friendship doc ids (PHASE 12) ──────────────────────────────
+// Older friendships were created with auto-generated ids. The new friends-only
+// story rules check friendship via exists() on a deterministic
+// `friendships/{u1}_{u2}` doc, which only exists for friendships made AFTER
+// this change. This backfills a matching deterministic doc for every existing
+// friendship of `uid` (idempotent — safe to call every session, e.g. from
+// useStories on mount).
+export async function migrateLegacyFriendships(uid: string): Promise<void> {
+  try {
+    const { friends } = await getFriends(uid, 100);
+    await Promise.all(
+      friends.map(async (f) => {
+        const [user1, user2] = [uid, f.uid].sort();
+        const ref  = doc(db, "friendships", `${user1}_${user2}`);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) {
+          await setDoc(ref, { user1, user2, createdAt: serverTimestamp() });
+        }
+      })
+    );
+  } catch (err) {
+    console.error("migrateLegacyFriendships failed:", err);
+  }
 }
