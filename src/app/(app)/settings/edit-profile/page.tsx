@@ -59,6 +59,7 @@ export default function EditProfilePage() {
   }
 
   async function handleSave() {
+    if (!profile) return;
     if (!form.displayName.trim()) return toast.error("Name cannot be empty");
     setLoading(true);
 
