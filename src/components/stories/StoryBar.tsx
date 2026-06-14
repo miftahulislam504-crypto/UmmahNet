@@ -8,11 +8,12 @@ import { useStories, useCreateStory } from "@/hooks/useStories";
 import { useAuthStore }       from "@/store/authStore";
 import { cn }                 from "@/lib/utils";
 
-// ── Square card size + overlapping avatar size ──────────────────────────────
+// ── Card size + overlapping avatar size ─────────────────────────────────────
 // The avatar's vertical CENTER sits exactly on the card's bottom edge:
 //   avatar wrapper -> absolute, top-full (= card's bottom line) + -translate-y-1/2
-const CARD = 92;   // square card width/height (px)
-const AVA  = 40;   // avatar wrapper width/height (px), incl. ring padding
+const CARD_W = 96;   // card width (px)
+const CARD_H = 122;  // card height (px) — slightly taller than wide
+const AVA    = 40;   // avatar wrapper width/height (px), incl. ring padding
 
 export function StoryBar() {
   const { user, profile }               = useAuthStore();
@@ -41,14 +42,14 @@ export function StoryBar() {
             onClick={() => fileRef.current?.click()}
             disabled={createStory.isPending}
             className="flex-shrink-0 flex flex-col items-center select-none"
-            style={{ width: CARD }}
+            style={{ width: CARD_W }}
           >
-            <div className="relative" style={{ width: CARD }}>
+            <div className="relative" style={{ width: CARD_W }}>
               {/* Square card */}
               <div
                 className="rounded-2xl overflow-hidden relative bg-gray-100 dark:bg-gray-800
                            ring-1 ring-gray-200 dark:ring-gray-700"
-                style={{ width: CARD, height: CARD }}
+                style={{ width: CARD_W, height: CARD_H }}
               >
                 {profile.photoURL ? (
                   <Image src={profile.photoURL} alt="" fill className="object-cover" />
@@ -80,7 +81,7 @@ export function StoryBar() {
             <span
               className="mt-6 text-[11px] font-medium text-gray-700 dark:text-gray-300
                          text-center leading-tight truncate"
-              style={{ width: CARD }}
+              style={{ width: CARD_W }}
             >
               Add story
             </span>
@@ -96,10 +97,10 @@ export function StoryBar() {
 
           {/* ── Loading skeletons ── */}
           {loading && Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="flex-shrink-0 flex flex-col items-center" style={{ width: CARD }}>
+            <div key={i} className="flex-shrink-0 flex flex-col items-center" style={{ width: CARD_W }}>
               <div
                 className="rounded-2xl bg-gray-200 dark:bg-gray-700 animate-pulse"
-                style={{ width: CARD, height: CARD }}
+                style={{ width: CARD_W, height: CARD_H }}
               />
               <div className="w-12 h-2.5 mt-6 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
             </div>
@@ -116,9 +117,9 @@ export function StoryBar() {
                 key={group.authorId}
                 onClick={() => { setViewerGroup(idx); setViewerOpen(true); }}
                 className="flex-shrink-0 flex flex-col items-center select-none"
-                style={{ width: CARD }}
+                style={{ width: CARD_W }}
               >
-                <div className="relative" style={{ width: CARD }}>
+                <div className="relative" style={{ width: CARD_W }}>
                   {/* Square card — latest story preview */}
                   <div
                     className={cn(
@@ -127,7 +128,7 @@ export function StoryBar() {
                         ? "ring-2 ring-primary-500"
                         : "ring-1 ring-gray-200 dark:ring-gray-700"
                     )}
-                    style={{ width: CARD, height: CARD }}
+                    style={{ width: CARD_W, height: CARD_H }}
                   >
                     {cover ? (
                       <Image src={cover} alt="" fill className="object-cover" />
@@ -176,7 +177,7 @@ export function StoryBar() {
                 <span
                   className="mt-6 text-[11px] font-medium text-gray-700 dark:text-gray-300
                              text-center leading-tight truncate"
-                  style={{ width: CARD }}
+                  style={{ width: CARD_W }}
                 >
                   {group.authorName.split(" ")[0]}
                 </span>
