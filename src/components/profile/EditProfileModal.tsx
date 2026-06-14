@@ -56,7 +56,7 @@ export function EditProfileModal({ profile, onClose }: Props) {
     if (!file) return;
     setAvatarFile(file);
     setPreview(URL.createObjectURL(file));
-    e.target.value = ""; // reset so same file can be picked again
+    e.target.value = "";
   }
 
   async function handleSave() {
@@ -66,19 +66,14 @@ export function EditProfileModal({ profile, onClose }: Props) {
     try {
       let photoURL = profile.photoURL ?? "";
 
-      // Convert to Base64 — no Firebase Storage needed
       if (avatarFile) {
         photoURL = await fileToBase64(avatarFile);
       }
 
-      // Update Firebase Auth profile
-      // NOTE: Firebase Auth photoURL has a ~4KB URL limit — we store full base64
-      // only in Firestore; Auth gets a placeholder if base64 is too large.
       if (auth.currentUser) {
         const isBase64 = photoURL.startsWith("data:");
         await updateProfile(auth.currentUser, {
           displayName: form.displayName,
-          // Don't push large base64 to Auth — it can reject it silently
           ...(!isBase64 ? { photoURL } : {}),
         });
       }
@@ -87,7 +82,7 @@ export function EditProfileModal({ profile, onClose }: Props) {
         displayName: form.displayName.trim(),
         username:    form.username.trim(),
         bio:         form.bio.trim(),
-        photoURL,   // full base64 or URL — stored in Firestore only
+        photoURL,
       };
 
       await updateDoc(doc(db, "users", profile.uid), updates);
@@ -112,84 +107,90 @@ export function EditProfileModal({ profile, onClose }: Props) {
                  bg-black/50 backdrop-blur-sm p-0 sm:p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="card w-full sm:max-w-md p-6 shadow-2xl rounded-t-3xl sm:rounded-2xl
-                      max-h-[92vh] overflow-y-auto">
+      {/* Modal — flex column so buttons always stay at bottom */}
+      <div className="card w-full sm:max-w-md shadow-2xl rounded-t-3xl sm:rounded-2xl
+                      flex flex-col max-h-[92vh]">
 
-        {/* Handle bar */}
-        <div className="w-10 h-1 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-4 sm:hidden" />
+        {/* ── Scrollable content ── */}
+        <div className="overflow-y-auto flex-1 px-6 pt-5 pb-2">
 
-        {/* Header */}
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white">Edit Profile</h2>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
+          {/* Handle bar (mobile) */}
+          <div className="w-10 h-1 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-4 sm:hidden" />
 
-        {/* Avatar picker */}
-        <div className="flex justify-center mb-6">
-          <div className="relative">
-            <Avatar src={preview} name={form.displayName} size="xl" />
+          {/* Header */}
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Edit Profile</h2>
             <button
-              onClick={() => fileRef.current?.click()}
-              className="absolute bottom-0 right-0 w-8 h-8
-                         bg-primary-600 hover:bg-primary-700
-                         text-white rounded-full flex items-center justify-center
-                         shadow-lg transition-colors"
+              onClick={onClose}
+              className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
-              <Camera className="w-4 h-4" />
+              <X className="w-5 h-5 text-gray-500" />
             </button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={onFileChange}
+          </div>
+
+          {/* Avatar picker */}
+          <div className="flex justify-center mb-5">
+            <div className="relative">
+              <Avatar src={preview} name={form.displayName} size="xl" />
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="absolute bottom-0 right-0 w-8 h-8
+                           bg-primary-600 hover:bg-primary-700
+                           text-white rounded-full flex items-center justify-center
+                           shadow-lg transition-colors"
+              >
+                <Camera className="w-4 h-4" />
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={onFileChange}
+              />
+            </div>
+          </div>
+
+          {/* Photo selected indicator */}
+          {avatarFile && (
+            <p className="text-center text-xs text-primary-600 -mt-2 mb-4 font-medium">
+              ✓ নতুন ছবি সিলেক্ট হয়েছে — Save করুন
+            </p>
+          )}
+
+          {/* Fields */}
+          <div className="flex flex-col gap-4 pb-2">
+            <Input
+              label="Full name"
+              placeholder="Your name"
+              value={form.displayName}
+              onChange={set("displayName")}
             />
+            <Input
+              label="Username"
+              placeholder="@username"
+              value={form.username}
+              onChange={set("username")}
+            />
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Bio</label>
+              <textarea
+                value={form.bio}
+                onChange={set("bio")}
+                rows={3}
+                placeholder="Tell people a little about yourself..."
+                className="w-full bg-gray-100 dark:bg-gray-800 border border-transparent
+                           focus:border-primary-500 focus:bg-white dark:focus:bg-gray-900
+                           rounded-xl px-4 py-2.5 text-sm outline-none transition-all
+                           duration-200 resize-none"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Photo change indicator */}
-        {avatarFile && (
-          <p className="text-center text-xs text-primary-600 -mt-3 mb-4 font-medium">
-            ✓ New photo selected — click Save to apply
-          </p>
-        )}
-
-        {/* Fields */}
-        <div className="flex flex-col gap-4">
-          <Input
-            label="Full name"
-            placeholder="Your name"
-            value={form.displayName}
-            onChange={set("displayName")}
-          />
-          <Input
-            label="Username"
-            placeholder="@username"
-            value={form.username}
-            onChange={set("username")}
-          />
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Bio</label>
-            <textarea
-              value={form.bio}
-              onChange={set("bio")}
-              rows={3}
-              placeholder="Tell people a little about yourself..."
-              className="w-full bg-gray-100 dark:bg-gray-800 border border-transparent
-                         focus:border-primary-500 focus:bg-white dark:focus:bg-gray-900
-                         rounded-xl px-4 py-2.5 text-sm outline-none transition-all
-                         duration-200 resize-none"
-            />
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-3 mt-6">
+        {/* ── Sticky action buttons — always visible ── */}
+        <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800
+                        bg-white dark:bg-gray-900 rounded-b-3xl sm:rounded-b-2xl flex gap-3">
           <Button variant="outline" onClick={onClose} className="flex-1 justify-center">
             Cancel
           </Button>
