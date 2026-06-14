@@ -19,14 +19,23 @@ import { auth, db, googleProvider } from "@/lib/firebase/config";
 import type { UserProfile } from "@/types";
 
 // ─── Session cookie helper ────────────────────────────────────────────────────
+// ─── BUG FIX: Secure cookie was gated on NODE_ENV, not the real connection ──
+// `; Secure` cookies are SILENTLY dropped by the browser on plain HTTP
+// (e.g. `next start` behind a non-TLS proxy, LAN/IP testing, some WebViews —
+// even though NODE_ENV is "production"). When that happens un_session never
+// gets set, waitForSessionCookie() times out/rejects, and the login page
+// never redirects even though Firebase Auth already succeeded.
+// Now we check the actual page protocol instead.
 function setSessionCookie(token: string) {
-  const isProduction = process.env.NODE_ENV === "production";
-  const secure       = isProduction ? "; Secure" : "";
-  document.cookie = `un_session=${token}; path=/; max-age=3600; SameSite=Strict${secure}`;
+  const secure =
+    typeof window !== "undefined" && window.location.protocol === "https:"
+      ? "; Secure"
+      : "";
+  document.cookie = `un_session=${token}; path=/; max-age=3600; SameSite=Lax${secure}`;
 }
 
 function clearSessionCookie() {
-  document.cookie = "un_session=; path=/; max-age=0; SameSite=Strict";
+  document.cookie = "un_session=; path=/; max-age=0; SameSite=Lax";
 }
 
 // ─── FIX: Promise that resolves only after the cookie is set ──────────────

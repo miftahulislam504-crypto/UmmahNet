@@ -33,7 +33,9 @@ function LoginForm() {
       .then(async (user) => {
         if (user) {
           toast.success("Welcome!");
-          await waitForSessionCookie();
+          // BUG FIX: a cookie-detection failure must not strand the user on
+          // /login after Firebase Auth already succeeded.
+          await waitForSessionCookie().catch(() => {});
           router.push(from);
         }
       })
@@ -53,7 +55,10 @@ function LoginForm() {
     try {
       await loginWithEmail(form.email, form.password);
       toast.success("Welcome back! Login successful");
-      await waitForSessionCookie();
+      // BUG FIX: previously a cookie-detection timeout would throw here,
+      // get caught below, show "Login failed", and never call router.push —
+      // even though signInWithEmailAndPassword had already succeeded.
+      await waitForSessionCookie().catch(() => {});
       router.push(from);
     } catch (err: any) {
       const msg =
@@ -75,7 +80,7 @@ function LoginForm() {
 
       // Desktop popup success lands here
       toast.success("Welcome!");
-      await waitForSessionCookie();
+      await waitForSessionCookie().catch(() => {});
       router.push(from);
     } catch (err: any) {
       // On mobile redirect, no error is thrown — the page just navigates away.
@@ -87,7 +92,6 @@ function LoginForm() {
     }
     // Note: on mobile redirect, finally doesn't run — the page reloads
   }
-
   return (
     <>
       <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Welcome back!</h2>

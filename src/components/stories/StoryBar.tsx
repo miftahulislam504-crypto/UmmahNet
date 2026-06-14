@@ -8,6 +8,12 @@ import { useStories, useCreateStory } from "@/hooks/useStories";
 import { useAuthStore }       from "@/store/authStore";
 import { cn }                 from "@/lib/utils";
 
+// ── Square card size + overlapping avatar size ──────────────────────────────
+// The avatar's vertical CENTER sits exactly on the card's bottom edge:
+//   avatar wrapper -> absolute, top-full (= card's bottom line) + -translate-y-1/2
+const CARD = 92;   // square card width/height (px)
+const AVA  = 40;   // avatar wrapper width/height (px), incl. ring padding
+
 export function StoryBar() {
   const { user, profile }               = useAuthStore();
   const { groups, loading, markViewed } = useStories();
@@ -28,42 +34,54 @@ export function StoryBar() {
   return (
     <>
       <div className="bg-white dark:bg-gray-900 px-3 py-3 border-b border-gray-100 dark:border-gray-800">
-        <div className="flex gap-4 overflow-x-auto scrollbar-hide">
+        <div className="flex gap-3 overflow-x-auto scrollbar-hide">
 
           {/* ── Add Story ── */}
           <button
             onClick={() => fileRef.current?.click()}
             disabled={createStory.isPending}
-            className="flex-shrink-0 flex flex-col items-center gap-1.5 select-none"
+            className="flex-shrink-0 flex flex-col items-center select-none"
+            style={{ width: CARD }}
           >
-            {/* Circle with + badge */}
-            <div className="relative w-[60px] h-[60px]">
-              {/* Avatar circle */}
-              <div className="w-full h-full rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-700">
+            <div className="relative" style={{ width: CARD }}>
+              {/* Square card */}
+              <div
+                className="rounded-2xl overflow-hidden relative bg-gray-100 dark:bg-gray-800
+                           ring-1 ring-gray-200 dark:ring-gray-700"
+                style={{ width: CARD, height: CARD }}
+              >
                 {profile.photoURL ? (
                   <Image src={profile.photoURL} alt="" fill className="object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center
-                                  bg-gradient-to-br from-gray-300 to-gray-400
-                                  dark:from-gray-600 dark:to-gray-700 text-white font-bold text-lg">
-                    {profile.displayName?.charAt(0)}
-                  </div>
+                                  bg-gradient-to-br from-primary-100 to-primary-200
+                                  dark:from-gray-700 dark:to-gray-800" />
                 )}
+                <div className="absolute inset-0 bg-black/15" />
               </div>
 
-              {/* Plus badge — bottom right */}
-              <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full
-                              bg-primary-600 border-2 border-white dark:border-gray-900
-                              flex items-center justify-center shadow">
-                {createStory.isPending
-                  ? <Loader2 className="w-2.5 h-2.5 text-white animate-spin" />
-                  : <Plus className="w-2.5 h-2.5 text-white" strokeWidth={3} />
-                }
+              {/* Avatar — center point sits on the card's bottom edge */}
+              <div
+                className="absolute left-1/2 top-full -translate-x-1/2 -translate-y-1/2 z-10
+                           rounded-full p-[2px] bg-white dark:bg-gray-900 shadow"
+                style={{ width: AVA, height: AVA }}
+              >
+                <div className="w-full h-full rounded-full bg-primary-600
+                                flex items-center justify-center overflow-hidden">
+                  {createStory.isPending
+                    ? <Loader2 className="w-4 h-4 text-white animate-spin" />
+                    : <Plus className="w-4 h-4 text-white" strokeWidth={3} />
+                  }
+                </div>
               </div>
             </div>
 
             {/* Label */}
-            <span className="text-[11px] font-medium text-gray-700 dark:text-gray-300 text-center leading-tight w-[64px] truncate">
+            <span
+              className="mt-6 text-[11px] font-medium text-gray-700 dark:text-gray-300
+                         text-center leading-tight truncate"
+              style={{ width: CARD }}
+            >
               Add story
             </span>
           </button>
@@ -77,52 +95,89 @@ export function StoryBar() {
           />
 
           {/* ── Loading skeletons ── */}
-          {loading && Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex-shrink-0 flex flex-col items-center gap-1.5">
-              <div className="w-[60px] h-[60px] rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
-              <div className="w-10 h-2.5 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
+          {loading && Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex-shrink-0 flex flex-col items-center" style={{ width: CARD }}>
+              <div
+                className="rounded-2xl bg-gray-200 dark:bg-gray-700 animate-pulse"
+                style={{ width: CARD, height: CARD }}
+              />
+              <div className="w-12 h-2.5 mt-6 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
             </div>
           ))}
 
-          {/* ── Story circles ── */}
+          {/* ── Story cards ── */}
           {!loading && groups.map((group, idx) => {
             if (group.authorId === user?.uid) return null;
-            const hasNew = group.hasUnviewed;
+            const hasNew  = group.hasUnviewed;
+            const cover   = group.stories[group.stories.length - 1]?.mediaUrl;
+
             return (
               <button
                 key={group.authorId}
                 onClick={() => { setViewerGroup(idx); setViewerOpen(true); }}
-                className="flex-shrink-0 flex flex-col items-center gap-1.5 select-none"
+                className="flex-shrink-0 flex flex-col items-center select-none"
+                style={{ width: CARD }}
               >
-                {/* Ring + avatar */}
-                <div className={cn(
-                  "w-[60px] h-[60px] rounded-full p-[2.5px]",
-                  hasNew
-                    ? "bg-gradient-to-tr from-primary-500 via-purple-500 to-pink-500"
-                    : "bg-gray-300 dark:bg-gray-600"
-                )}>
-                  <div className="w-full h-full rounded-full overflow-hidden
-                                  border-2 border-white dark:border-gray-900 bg-gray-200 dark:bg-gray-700">
-                    {group.authorPhoto ? (
-                      <Image
-                        src={group.authorPhoto}
-                        alt={group.authorName}
-                        width={56} height={56}
-                        className="object-cover w-full h-full"
-                      />
+                <div className="relative" style={{ width: CARD }}>
+                  {/* Square card — latest story preview */}
+                  <div
+                    className={cn(
+                      "rounded-2xl overflow-hidden relative bg-gray-200 dark:bg-gray-700",
+                      hasNew
+                        ? "ring-2 ring-primary-500"
+                        : "ring-1 ring-gray-200 dark:ring-gray-700"
+                    )}
+                    style={{ width: CARD, height: CARD }}
+                  >
+                    {cover ? (
+                      <Image src={cover} alt="" fill className="object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center
                                       bg-gradient-to-br from-purple-400 to-pink-500
-                                      text-white font-bold text-lg">
+                                      text-white font-bold text-2xl">
                         {group.authorName?.charAt(0)}
                       </div>
                     )}
+                    <div className="absolute inset-0 bg-black/15" />
+                  </div>
+
+                  {/* Avatar — center point sits on the card's bottom edge */}
+                  <div
+                    className={cn(
+                      "absolute left-1/2 top-full -translate-x-1/2 -translate-y-1/2 z-10",
+                      "rounded-full p-[2px]",
+                      hasNew
+                        ? "bg-gradient-to-tr from-primary-500 via-purple-500 to-pink-500"
+                        : "bg-white dark:bg-gray-900"
+                    )}
+                    style={{ width: AVA, height: AVA }}
+                  >
+                    <div className="w-full h-full rounded-full overflow-hidden
+                                    bg-gray-200 dark:bg-gray-700 ring-2 ring-white dark:ring-gray-900">
+                      {group.authorPhoto ? (
+                        <Image
+                          src={group.authorPhoto}
+                          alt={group.authorName}
+                          width={AVA} height={AVA}
+                          className="object-cover w-full h-full"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center
+                                        bg-gradient-to-br from-purple-400 to-pink-500
+                                        text-white font-bold text-sm">
+                          {group.authorName?.charAt(0)}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
                 {/* Name */}
-                <span className="text-[11px] font-medium text-gray-700 dark:text-gray-300
-                                 text-center leading-tight w-[64px] truncate">
+                <span
+                  className="mt-6 text-[11px] font-medium text-gray-700 dark:text-gray-300
+                             text-center leading-tight truncate"
+                  style={{ width: CARD }}
+                >
                   {group.authorName.split(" ")[0]}
                 </span>
               </button>

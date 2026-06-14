@@ -34,7 +34,7 @@ export default function RegisterPage() {
       .then(async (user) => {
         if (user) {
           toast.success("Welcome!");
-          await waitForSessionCookie();
+          await waitForSessionCookie().catch(() => {});
           router.push("/");
         }
       })
@@ -63,7 +63,7 @@ export default function RegisterPage() {
     try {
       await registerWithEmail(form.email, form.password, form.displayName, form.username);
       toast.success("Account created! Welcome 🎉");
-      await waitForSessionCookie();
+      await waitForSessionCookie().catch(() => {});
       router.push("/");
     } catch (err: any) {
       const msg =
@@ -82,7 +82,7 @@ export default function RegisterPage() {
       await loginWithGoogle();
       // Reached on successful desktop popup
       toast.success("Welcome!");
-      await waitForSessionCookie();
+      await waitForSessionCookie().catch(() => {});
       router.push("/");
     } catch (err: any) {
       if (err?.code !== "auth/popup-closed-by-user") {
