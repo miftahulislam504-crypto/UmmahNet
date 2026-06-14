@@ -56,7 +56,7 @@ export function useCreateStory() {
       createStory(
         user!.uid,
         profile!.displayName,
-        profile!.photoURL,
+        profile!.photoURL ?? "",
         file,
         caption
       ),

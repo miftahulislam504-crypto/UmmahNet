@@ -27,45 +27,45 @@ export function StoryBar() {
 
   return (
     <>
-      <div className="bg-white dark:bg-gray-900 px-3 py-2.5">
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+      <div className="bg-white dark:bg-gray-900 px-3 py-3 border-b border-gray-100 dark:border-gray-800">
+        <div className="flex gap-4 overflow-x-auto scrollbar-hide">
 
-          {/* ── Add Story card ── */}
+          {/* ── Add Story ── */}
           <button
             onClick={() => fileRef.current?.click()}
             disabled={createStory.isPending}
-            className="relative flex-shrink-0 w-[72px] h-[118px] rounded-xl overflow-hidden
-                       bg-gray-200 dark:bg-gray-700 select-none"
+            className="flex-shrink-0 flex flex-col items-center gap-1.5 select-none"
           >
-            {/* BG: user photo */}
-            {profile.photoURL ? (
-              <Image src={profile.photoURL} alt="" fill className="object-cover" />
-            ) : (
-              <div className="absolute inset-0 bg-gradient-to-b from-gray-300 to-gray-400
-                              dark:from-gray-600 dark:to-gray-700" />
-            )}
+            {/* Circle with + badge */}
+            <div className="relative w-[60px] h-[60px]">
+              {/* Avatar circle */}
+              <div className="w-full h-full rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-700">
+                {profile.photoURL ? (
+                  <Image src={profile.photoURL} alt="" fill className="object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center
+                                  bg-gradient-to-br from-gray-300 to-gray-400
+                                  dark:from-gray-600 dark:to-gray-700 text-white font-bold text-lg">
+                    {profile.displayName?.charAt(0)}
+                  </div>
+                )}
+              </div>
 
-            {/* Bottom dark gradient */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-
-            {/* Plus badge — bottom left, on top of gradient */}
-            <div className="absolute bottom-8 left-1/2 -translate-x-1/2">
-              <div className="w-8 h-8 rounded-full bg-blue-500 border-[3px] border-white
-                              dark:border-gray-900 flex items-center justify-center shadow-md">
+              {/* Plus badge — bottom right */}
+              <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full
+                              bg-primary-600 border-2 border-white dark:border-gray-900
+                              flex items-center justify-center shadow">
                 {createStory.isPending
-                  ? <Loader2 className="w-4 h-4 text-white animate-spin" />
-                  : <Plus className="w-4 h-4 text-white" strokeWidth={3} />
+                  ? <Loader2 className="w-2.5 h-2.5 text-white animate-spin" />
+                  : <Plus className="w-2.5 h-2.5 text-white" strokeWidth={3} />
                 }
               </div>
             </div>
 
-            {/* Name label — very bottom */}
-            <div className="absolute bottom-1.5 left-0 right-0 px-1">
-              <span className="block text-white text-[10px] font-semibold text-center
-                               leading-tight drop-shadow-md truncate">
-                Add story
-              </span>
-            </div>
+            {/* Label */}
+            <span className="text-[11px] font-medium text-gray-700 dark:text-gray-300 text-center leading-tight w-[64px] truncate">
+              Add story
+            </span>
           </button>
 
           <input
@@ -77,75 +77,54 @@ export function StoryBar() {
           />
 
           {/* ── Loading skeletons ── */}
-          {loading && Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="flex-shrink-0 w-[72px] h-[118px] rounded-xl
-                         bg-gray-200 dark:bg-gray-700 animate-pulse"
-            />
+          {loading && Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex-shrink-0 flex flex-col items-center gap-1.5">
+              <div className="w-[60px] h-[60px] rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse" />
+              <div className="w-10 h-2.5 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
+            </div>
           ))}
 
-          {/* ── Story cards ── */}
+          {/* ── Story circles ── */}
           {!loading && groups.map((group, idx) => {
             if (group.authorId === user?.uid) return null;
+            const hasNew = group.hasUnviewed;
             return (
               <button
                 key={group.authorId}
                 onClick={() => { setViewerGroup(idx); setViewerOpen(true); }}
-                className="relative flex-shrink-0 w-[72px] h-[118px] rounded-xl overflow-hidden
-                           bg-gray-300 dark:bg-gray-700 select-none"
+                className="flex-shrink-0 flex flex-col items-center gap-1.5 select-none"
               >
-                {/* BG photo */}
-                {group.authorPhoto ? (
-                  <Image
-                    src={group.authorPhoto}
-                    alt={group.authorName}
-                    fill
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="absolute inset-0 bg-gradient-to-b from-purple-400 to-pink-500" />
-                )}
-
-                {/* Dark gradient overlay — bottom heavy */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-
-                {/* Avatar — bottom left with ring */}
-                <div className="absolute bottom-7 left-1.5">
-                  <div className={cn(
-                    "w-8 h-8 rounded-full p-[2px]",
-                    group.hasUnviewed
-                      ? "bg-blue-500"
-                      : "bg-gray-400 dark:bg-gray-500"
-                  )}>
-                    <div className="w-full h-full rounded-full overflow-hidden
-                                    border-2 border-white dark:border-gray-900 bg-gray-200">
-                      {group.authorPhoto ? (
-                        <Image
-                          src={group.authorPhoto}
-                          alt=""
-                          width={28} height={28}
-                          className="object-cover w-full h-full"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center
-                                        bg-purple-500 text-white font-bold text-[10px]">
-                          {group.authorName?.charAt(0)}
-                        </div>
-                      )}
-                    </div>
+                {/* Ring + avatar */}
+                <div className={cn(
+                  "w-[60px] h-[60px] rounded-full p-[2.5px]",
+                  hasNew
+                    ? "bg-gradient-to-tr from-primary-500 via-purple-500 to-pink-500"
+                    : "bg-gray-300 dark:bg-gray-600"
+                )}>
+                  <div className="w-full h-full rounded-full overflow-hidden
+                                  border-2 border-white dark:border-gray-900 bg-gray-200 dark:bg-gray-700">
+                    {group.authorPhoto ? (
+                      <Image
+                        src={group.authorPhoto}
+                        alt={group.authorName}
+                        width={56} height={56}
+                        className="object-cover w-full h-full"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center
+                                      bg-gradient-to-br from-purple-400 to-pink-500
+                                      text-white font-bold text-lg">
+                        {group.authorName?.charAt(0)}
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {/* Name — very bottom */}
-                <div className="absolute bottom-1.5 left-1 right-1">
-                  <span className={cn(
-                    "block text-[10px] font-semibold leading-tight truncate drop-shadow-md",
-                    "text-white"
-                  )}>
-                    {group.authorName.split(" ")[0]}
-                  </span>
-                </div>
+                {/* Name */}
+                <span className="text-[11px] font-medium text-gray-700 dark:text-gray-300
+                                 text-center leading-tight w-[64px] truncate">
+                  {group.authorName.split(" ")[0]}
+                </span>
               </button>
             );
           })}

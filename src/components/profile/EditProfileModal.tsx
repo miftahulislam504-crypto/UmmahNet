@@ -56,6 +56,7 @@ export function EditProfileModal({ profile, onClose }: Props) {
     if (!file) return;
     setAvatarFile(file);
     setPreview(URL.createObjectURL(file));
+    e.target.value = ""; // reset so same file can be picked again
   }
 
   async function handleSave() {
@@ -70,11 +71,15 @@ export function EditProfileModal({ profile, onClose }: Props) {
         photoURL = await fileToBase64(avatarFile);
       }
 
-      // Update Firebase Auth display name
+      // Update Firebase Auth profile
+      // NOTE: Firebase Auth photoURL has a ~4KB URL limit — we store full base64
+      // only in Firestore; Auth gets a placeholder if base64 is too large.
       if (auth.currentUser) {
+        const isBase64 = photoURL.startsWith("data:");
         await updateProfile(auth.currentUser, {
           displayName: form.displayName,
-          ...(avatarFile ? { photoURL } : {}),
+          // Don't push large base64 to Auth — it can reject it silently
+          ...(!isBase64 ? { photoURL } : {}),
         });
       }
 
@@ -82,7 +87,7 @@ export function EditProfileModal({ profile, onClose }: Props) {
         displayName: form.displayName.trim(),
         username:    form.username.trim(),
         bio:         form.bio.trim(),
-        photoURL,
+        photoURL,   // full base64 or URL — stored in Firestore only
       };
 
       await updateDoc(doc(db, "users", profile.uid), updates);
@@ -146,6 +151,13 @@ export function EditProfileModal({ profile, onClose }: Props) {
             />
           </div>
         </div>
+
+        {/* Photo change indicator */}
+        {avatarFile && (
+          <p className="text-center text-xs text-primary-600 -mt-3 mb-4 font-medium">
+            ✓ New photo selected — click Save to apply
+          </p>
+        )}
 
         {/* Fields */}
         <div className="flex flex-col gap-4">

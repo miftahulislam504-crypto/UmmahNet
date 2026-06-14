@@ -74,7 +74,7 @@ export function useCreatePost() {
       createPost(
         user!.uid,
         profile!.displayName,
-        profile!.photoURL,
+        profile!.photoURL ?? "",
         content,
         files,
         visibility

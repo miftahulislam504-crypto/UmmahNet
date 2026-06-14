@@ -70,7 +70,7 @@ async function mediaToBase64(file: File): Promise<string> {
 export async function createStory(
   authorId:    string,
   authorName:  string,
-  authorPhoto: string,
+  authorPhoto: string | null | undefined,
   file:        File,
   caption:     string
 ): Promise<void> {
@@ -82,7 +82,7 @@ export async function createStory(
   await addDoc(collection(db, "stories"), {
     authorId,
     authorName,
-    authorPhoto,
+    authorPhoto:   authorPhoto ?? "",
     mediaUrl,
     type:      isVideo ? "video" : "image",
     caption:   caption.trim(),

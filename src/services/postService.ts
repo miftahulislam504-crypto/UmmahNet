@@ -47,7 +47,7 @@ async function fileToBase64(file: File): Promise<string> {
 export async function createPost(
   authorId:    string,
   authorName:  string,
-  authorPhoto: string,
+  authorPhoto: string | null | undefined,
   content:     string,
   mediaFiles:  File[],
   visibility:  Post["visibility"] = "public"
@@ -64,7 +64,7 @@ export async function createPost(
   const ref2 = await addDoc(collection(db, "posts"), {
     authorId,
     authorName,
-    authorPhoto,
+    authorPhoto:   authorPhoto ?? "",
     content:       content.trim(),
     mediaUrls,
     type,
