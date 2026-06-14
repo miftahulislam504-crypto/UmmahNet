@@ -61,6 +61,6 @@ export function useCreateStory() {
         caption
       ),
     onSuccess: () => toast.success("Story published ✅"),
-    onError:   () => toast.error("Failed to publish story"),
+    onError:   (err: any) => toast.error(err?.message ?? "Story upload failed"),
   });
 }

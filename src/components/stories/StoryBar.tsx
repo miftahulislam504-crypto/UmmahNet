@@ -71,7 +71,7 @@ export function StoryBar() {
           <input
             ref={fileRef}
             type="file"
-            accept="image/*,video/*"
+            accept="image/*"
             className="hidden"
             onChange={handleFile}
           />

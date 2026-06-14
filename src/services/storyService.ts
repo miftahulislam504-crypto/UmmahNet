@@ -36,30 +36,23 @@ export interface StoryGroup {
   hasUnviewed: boolean;
 }
 
-// ─── File → Base64 ────────────────────────────────────────────────────────────
-async function mediaToBase64(file: File): Promise<string> {
-  // Video: store as-is via FileReader (base64)
-  if (file.type.startsWith("video/")) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload  = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-  // Image: resize to max 1080px
+// ─── Image → Base64 (max 900px, quality 0.82) ───────────────────────────────
+// NOTE: Video is NOT supported — Firestore has a 1MB document limit.
+// Storing video as base64 always exceeds that limit and causes story upload to fail.
+// Only images are accepted; the UI hides the video option accordingly.
+async function imageToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new window.Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
-      const MAX = 1080;
+      const MAX = 900;
       const scale = Math.min(1, MAX / Math.max(img.width, img.height));
       const canvas = document.createElement("canvas");
       canvas.width  = img.width  * scale;
       canvas.height = img.height * scale;
       canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
       URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL("image/jpeg", 0.85));
+      resolve(canvas.toDataURL("image/jpeg", 0.82));
     };
     img.onerror = reject;
     img.src = url;
@@ -74,8 +67,10 @@ export async function createStory(
   file:        File,
   caption:     string
 ): Promise<void> {
-  const isVideo  = file.type.startsWith("video/");
-  const mediaUrl = await mediaToBase64(file);
+  if (file.type.startsWith("video/")) {
+    throw new Error("Video stories are not supported yet. Please upload an image.");
+  }
+  const mediaUrl = await imageToBase64(file);
 
   const expiresAt = Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000));
 
@@ -84,7 +79,7 @@ export async function createStory(
     authorName,
     authorPhoto:   authorPhoto ?? "",
     mediaUrl,
-    type:      isVideo ? "video" : "image",
+    type:      "image",
     caption:   caption.trim(),
     viewerIds: [],
     expiresAt,
