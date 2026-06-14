@@ -107,7 +107,8 @@ export function EditProfileModal({ profile, onClose }: Props) {
                  bg-black/50 backdrop-blur-sm p-0 sm:p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="card w-full sm:max-w-md p-6 shadow-2xl rounded-t-3xl sm:rounded-2xl">
+      <div className="card w-full sm:max-w-md p-6 shadow-2xl rounded-t-3xl sm:rounded-2xl
+                      max-h-[92vh] overflow-y-auto">
 
         {/* Handle bar */}
         <div className="w-10 h-1 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-4 sm:hidden" />
