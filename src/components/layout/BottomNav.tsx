@@ -4,9 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Users, Plus, MessageCircle, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useConversations } from "@/hooks/useChat";
 
 export function BottomNav() {
   const pathname = usePathname();
+  // Phase 5: show total unread message count on messages tab
+  const { totalUnread } = useConversations();
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50
@@ -15,13 +18,13 @@ export function BottomNav() {
                     safe-area-bottom">
       <div className="flex items-center justify-around h-16 px-2 max-w-lg mx-auto">
 
-        <NavTab href="/"         icon={Home}          label="Home"     active={pathname === "/"} />
-        <NavTab href="/friends"  icon={Users}         label="Friends"  active={pathname === "/friends"} />
+        <NavTab href="/"        icon={Home}  label="হোম"    active={pathname === "/"} />
+        <NavTab href="/friends" icon={Users} label="বন্ধু"   active={pathname === "/friends"} />
 
         {/* Center + button → /create-post */}
         <Link
           href="/create-post"
-          aria-label="Create post"
+          aria-label="পোস্ট তৈরি করুন"
           className="flex items-center justify-center
                      w-12 h-12 rounded-2xl -mt-5
                      bg-primary-600 hover:bg-primary-700
@@ -31,8 +34,24 @@ export function BottomNav() {
           <Plus className="w-6 h-6 stroke-[2.5]" />
         </Link>
 
-        <NavTab href="/messages" icon={MessageCircle} label="Messages" active={pathname === "/messages"} />
-        <NavTab href="/settings" icon={Settings}      label="Settings" active={pathname === "/settings"} />
+        {/* Messages tab with unread badge */}
+        <div className="relative">
+          <NavTab
+            href="/messages"
+            icon={MessageCircle}
+            label="বার্তা"
+            active={pathname === "/messages"}
+          />
+          {totalUnread > 0 && (
+            <span className="absolute -top-0.5 right-1 min-w-[16px] h-4 bg-red-500 text-white
+                             text-[9px] font-bold rounded-full flex items-center justify-center
+                             px-1 pointer-events-none">
+              {totalUnread > 9 ? "9+" : totalUnread}
+            </span>
+          )}
+        </div>
+
+        <NavTab href="/settings" icon={Settings} label="সেটিংস" active={pathname === "/settings"} />
       </div>
     </nav>
   );

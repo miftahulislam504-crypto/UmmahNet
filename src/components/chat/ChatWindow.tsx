@@ -1,17 +1,17 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { ArrowLeft, Send, ImageIcon, Loader2, X } from "lucide-react";
+import { ArrowLeft, Send, ImageIcon, Loader2, X, CheckCheck, Check } from "lucide-react";
 import Image from "next/image";
 import Link  from "next/link";
-import { Avatar }      from "@/components/ui/Avatar";
-import { useMessages } from "@/hooks/useChat";
-import { useAuthStore } from "@/store/authStore";
+import { Avatar }            from "@/components/ui/Avatar";
+import { useMessages, useUserPresence } from "@/hooks/useChat";
+import { useAuthStore }      from "@/store/authStore";
 import { getOtherParticipant } from "@/services/chatService";
-import { formatDate, cn } from "@/lib/utils";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase/config";
-import type { UserProfile } from "@/types";
+import { formatDate, cn }    from "@/lib/utils";
+import { doc, getDoc }       from "firebase/firestore";
+import { db }                from "@/lib/firebase/config";
+import type { UserProfile }  from "@/types";
 
 interface Props {
   conversationId: string;
@@ -25,7 +25,10 @@ export function ChatWindow({ conversationId, onBack }: Props) {
   const [imgFile,  setImgFile]      = useState<File | null>(null);
   const [preview,  setPreview]      = useState<string | null>(null);
   const [other,    setOther]        = useState<UserProfile | null>(null);
-  const fileRef                     = useRef<HTMLInputElement>(null);
+
+  // Phase 5: live presence of the other participant
+  const presence = useUserPresence(other?.uid);
+  const fileRef  = useRef<HTMLInputElement>(null);
 
   // Load other participant info
   useEffect(() => {
@@ -59,6 +62,14 @@ export function ChatWindow({ conversationId, onBack }: Props) {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   }
 
+  // ── Presence label ──────────────────────────────────────────────────────────
+  function presenceLabel(): string {
+    if (presence.online) return "অনলাইন";
+    if (!presence.lastSeen) return "অফলাইন";
+    const date = (presence.lastSeen as any)?.toDate?.() ?? new Date();
+    return `সর্বশেষ ${formatDate(date)}`;
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -71,16 +82,26 @@ export function ChatWindow({ conversationId, onBack }: Props) {
         </button>
         {other && (
           <>
-            <Link href={`/profile/${other.uid}`}>
+            {/* Avatar with online dot */}
+            <Link href={`/profile/${other.uid}`} className="relative flex-shrink-0">
               <Avatar src={other.photoURL} name={other.displayName} size="sm" />
+              {presence.online && (
+                <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2
+                                 border-white dark:border-gray-900 rounded-full" />
+              )}
             </Link>
-            <div>
+            <div className="flex-1 min-w-0">
               <Link href={`/profile/${other.uid}`}>
-                <p className="font-semibold text-sm text-gray-900 dark:text-white hover:underline">
+                <p className="font-semibold text-sm text-gray-900 dark:text-white hover:underline truncate">
                   {other.displayName}
                 </p>
               </Link>
-              <p className="text-xs text-gray-500">@{other.username}</p>
+              <p className={cn(
+                "text-xs",
+                presence.online ? "text-green-500" : "text-gray-400"
+              )}>
+                {presenceLabel()}
+              </p>
             </div>
           </>
         )}
@@ -124,13 +145,24 @@ export function ChatWindow({ conversationId, onBack }: Props) {
                     </div>
                   )}
                   {msg.text && <p className="break-words leading-relaxed">{msg.text}</p>}
-                  <p className={cn(
-                    "text-xs mt-1",
-                    isMe ? "text-primary-200" : "text-gray-400"
+
+                  {/* Timestamp + Phase 5: seen receipt */}
+                  <div className={cn(
+                    "flex items-center gap-1 mt-1",
+                    isMe ? "justify-end" : "justify-start"
                   )}>
-                    {createdAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
-                    {isMe && msg.seen && " ·  · Seen"}
-                  </p>
+                    <span className={cn(
+                      "text-xs",
+                      isMe ? "text-primary-200" : "text-gray-400"
+                    )}>
+                      {createdAt.toLocaleTimeString("bn-BD", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                    {isMe && (
+                      msg.seen
+                        ? <CheckCheck className="w-3.5 h-3.5 text-primary-200" />
+                        : <Check      className="w-3.5 h-3.5 text-primary-300/60" />
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -169,7 +201,7 @@ export function ChatWindow({ conversationId, onBack }: Props) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKey}
-          placeholder="Write a message..."
+          placeholder="বার্তা লিখুন..."
           className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full px-4 py-2.5
                      text-sm outline-none focus:ring-2 focus:ring-primary-500 transition-all"
         />

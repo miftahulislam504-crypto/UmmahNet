@@ -75,12 +75,19 @@ export interface Friendship {
 
 // ─── Conversation ─────────────────────────────────────────────────────────────
 export interface Conversation {
-  id:           string;
-  participants: string[];
-  type:         "private" | "group";
-  lastMessage:  string;
-  lastSenderId: string;
-  updatedAt:    Timestamp;
+  id:                 string;
+  participants:       string[];
+  type:               "private" | "group";
+  lastMessage:        string;
+  lastSenderId:       string;
+  updatedAt:          Timestamp;
+  unreadCounts:       Record<string, number>; // { [uid]: unreadCount } Phase 5
+}
+
+// ─── UserPresence ─────────────────────────────────────────────────────────────
+export interface UserPresence {
+  online:    boolean;
+  lastSeen:  Timestamp | null;
 }
 
 // ─── Message ──────────────────────────────────────────────────────────────────

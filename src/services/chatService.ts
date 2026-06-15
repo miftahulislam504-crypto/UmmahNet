@@ -12,10 +12,12 @@ import {
   serverTimestamp,
   onSnapshot,
   writeBatch,
+  increment,
+  Timestamp,
   type Unsubscribe,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
-import type { Conversation, Message } from "@/types";
+import type { Conversation, Message, UserPresence } from "@/types";
 import { createNotification } from "@/services/notificationService";
 
 // ─── Get or create private conversation ──────────────────────────────────────
@@ -25,8 +27,6 @@ export async function getOrCreateConversation(
 ): Promise<string> {
   const participants = [myUid, theirUid].sort();
 
-  // BUG FIX: "==" on array doesn't work in Firestore.
-  // Use array-contains + client-side filter instead.
   const q    = query(
     collection(db, "conversations"),
     where("participants", "array-contains", myUid),
@@ -43,10 +43,11 @@ export async function getOrCreateConversation(
 
   const ref2 = await addDoc(collection(db, "conversations"), {
     participants,
-    type:         "private",
-    lastMessage:  "",
-    lastSenderId: "",
-    updatedAt:    serverTimestamp(),
+    type:          "private",
+    lastMessage:   "",
+    lastSenderId:  "",
+    updatedAt:     serverTimestamp(),
+    unreadCounts:  { [myUid]: 0, [theirUid]: 0 },  // Phase 5
   });
   return ref2.id;
 }
@@ -60,7 +61,6 @@ export async function sendMessage(
 ): Promise<void> {
   let mediaUrl = "";
   if (imageFile) {
-    // Convert image to Base64 instead of Firebase Storage
     mediaUrl = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload  = () => resolve(reader.result as string);
@@ -69,9 +69,16 @@ export async function sendMessage(
     });
   }
 
-  const batch = writeBatch(db);
+  // Fetch conversation to get the other participant's UID
+  const convSnap = await getDoc(doc(db, "conversations", conversationId));
+  const participants: string[] = convSnap.exists()
+    ? (convSnap.data().participants ?? [])
+    : [];
+  const recipientId = participants.find((uid) => uid !== senderId);
 
+  const batch  = writeBatch(db);
   const msgRef = doc(collection(db, "messages"));
+
   batch.set(msgRef, {
     conversationId,
     senderId,
@@ -83,43 +90,41 @@ export async function sendMessage(
     createdAt: serverTimestamp(),
   });
 
-  batch.update(doc(db, "conversations", conversationId), {
-    lastMessage:  imageFile ? "📷 Photo" : text.trim(),
+  // Phase 5: increment recipient's unread counter
+  const convUpdate: Record<string, any> = {
+    lastMessage:  imageFile ? "📷 ছবি" : text.trim(),
     lastSenderId: senderId,
     updatedAt:    serverTimestamp(),
-  });
+  };
+  if (recipientId) {
+    convUpdate[`unreadCounts.${recipientId}`] = increment(1);
+  }
+  batch.update(doc(db, "conversations", conversationId), convUpdate);
 
   await batch.commit();
 
-  // ── Phase 3: Notify the other participant ────────────────────────────────
-  try {
-    const [convSnap, senderSnap] = await Promise.all([
-      getDoc(doc(db, "conversations", conversationId)),
-      getDoc(doc(db, "users", senderId)),
-    ]);
-    if (convSnap.exists()) {
-      const participants: string[] = convSnap.data().participants ?? [];
-      const recipientId = participants.find((uid) => uid !== senderId);
-      if (recipientId) {
-        const senderName = senderSnap.exists()
-          ? (senderSnap.data() as { displayName: string }).displayName
-          : "কেউ একজন";
-        await createNotification({
-          userId:        recipientId,
-          type:          "message",
-          actorId:       senderId,
-          actorName:     senderName,
-          referenceId:   conversationId,
-          referenceType: "conversation",
-        });
-      }
+  // Phase 3 notification (fire-and-forget)
+  if (recipientId) {
+    try {
+      const senderSnap = await getDoc(doc(db, "users", senderId));
+      const senderName = senderSnap.exists()
+        ? (senderSnap.data() as { displayName: string }).displayName
+        : "কেউ একজন";
+      await createNotification({
+        userId:        recipientId,
+        type:          "message",
+        actorId:       senderId,
+        actorName:     senderName,
+        referenceId:   conversationId,
+        referenceType: "conversation",
+      });
+    } catch (err) {
+      console.error("sendMessage notification failed:", err);
     }
-  } catch (err) {
-    console.error("sendMessage notification failed:", err);
   }
 }
 
-// ─── Mark messages as seen ────────────────────────────────────────────────────
+// ─── Mark messages as seen + reset unread counter ────────────────────────────
 export async function markAsSeen(
   conversationId: string,
   myUid:          string
@@ -131,8 +136,6 @@ export async function markAsSeen(
     limit(50)
   );
   const snap = await getDocs(q);
-  if (snap.empty) return;
-
   const toMark = snap.docs.filter((d) => d.data().senderId !== myUid);
   if (toMark.length === 0) return;
 
@@ -140,6 +143,10 @@ export async function markAsSeen(
   toMark.forEach((d) =>
     batch.update(d.ref, { seen: true, seenAt: serverTimestamp() })
   );
+  // Phase 5: reset my unread counter
+  batch.update(doc(db, "conversations", conversationId), {
+    [`unreadCounts.${myUid}`]: 0,
+  });
   await batch.commit();
 }
 
@@ -160,9 +167,6 @@ export function subscribeToMessages(
 }
 
 // ─── Subscribe to conversation list ──────────────────────────────────────────
-// BUG FIX: removed orderBy("updatedAt") + where("type") compound query
-// which required a composite Firestore index that caused silent loading failure.
-// Now: simple array-contains query, sort client-side.
 export function subscribeToConversations(
   myUid:    string,
   callback: (convs: (Conversation & { id: string })[]) => void
@@ -193,4 +197,58 @@ export async function getOtherParticipant(
   if (!otherId) return null;
   const snap = await getDoc(doc(db, "users", otherId));
   return snap.exists() ? { uid: otherId, ...snap.data() } : null;
+}
+
+// ─── Phase 5: Presence ───────────────────────────────────────────────────────
+// Write online status to Firestore users/{uid} directly.
+// Uses visibilitychange + beforeunload for reliable offline detection.
+export function initPresence(uid: string): () => void {
+  if (typeof window === "undefined") return () => {};
+
+  const ref = doc(db, "users", uid);
+
+  async function setOnline() {
+    try {
+      await updateDoc(ref, { online: true, lastSeen: serverTimestamp() });
+    } catch {}
+  }
+
+  async function setOffline() {
+    try {
+      await updateDoc(ref, {
+        online:   false,
+        lastSeen: serverTimestamp(),
+      });
+    } catch {}
+  }
+
+  function handleVisibility() {
+    if (document.visibilityState === "visible") setOnline();
+    else setOffline();
+  }
+
+  setOnline();
+  document.addEventListener("visibilitychange", handleVisibility);
+  window.addEventListener("beforeunload", setOffline);
+
+  return () => {
+    document.removeEventListener("visibilitychange", handleVisibility);
+    window.removeEventListener("beforeunload", setOffline);
+    setOffline();
+  };
+}
+
+// ─── Phase 5: Subscribe to a user's presence ─────────────────────────────────
+export function subscribeToPresence(
+  uid:      string,
+  callback: (presence: UserPresence) => void
+): Unsubscribe {
+  return onSnapshot(doc(db, "users", uid), (snap) => {
+    if (!snap.exists()) return;
+    const data = snap.data();
+    callback({
+      online:   data.online ?? false,
+      lastSeen: data.lastSeen ?? null,
+    });
+  });
 }

@@ -43,13 +43,13 @@ export function ConversationList({ convs, loading, activeId, onSelect }: Props) 
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="p-4 border-b border-gray-100 dark:border-gray-800">
-        <h2 className="font-bold text-lg text-gray-900 dark:text-white mb-3">Messages</h2>
+        <h2 className="font-bold text-lg text-gray-900 dark:text-white mb-3">বার্তা</h2>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search..."
+            placeholder="খুঁজুন..."
             className="w-full bg-gray-100 dark:bg-gray-800 rounded-xl pl-9 pr-3 py-2
                        text-sm outline-none focus:ring-2 focus:ring-primary-500 transition-all"
           />
@@ -67,7 +67,7 @@ export function ConversationList({ convs, loading, activeId, onSelect }: Props) 
         {!loading && filtered.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
             <MessageCircle className="w-8 h-8 text-gray-300 mb-2" />
-            <p className="text-sm text-gray-500">No conversations</p>
+            <p className="text-sm text-gray-500">কোনো কথোপকথন নেই</p>
           </div>
         )}
 
@@ -75,6 +75,8 @@ export function ConversationList({ convs, loading, activeId, onSelect }: Props) 
           const other     = conv.other;
           const updatedAt = (conv.updatedAt as any)?.toDate?.() ?? new Date();
           const isActive  = conv.id === activeId;
+          // Phase 5: unread count for current user
+          const unread    = (conv.unreadCounts ?? {})[user?.uid ?? ""] ?? 0;
 
           return (
             <button
@@ -87,24 +89,45 @@ export function ConversationList({ convs, loading, activeId, onSelect }: Props) 
                   : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
               )}
             >
-              <Avatar
-                src={other?.photoURL}
-                name={other?.displayName ?? "?"}
-                size="md"
-              />
+              <div className="relative flex-shrink-0">
+                <Avatar
+                  src={other?.photoURL}
+                  name={other?.displayName ?? "?"}
+                  size="md"
+                />
+              </div>
+
               <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">
+                <div className="flex items-center justify-between gap-2">
+                  <p className={cn(
+                    "text-sm truncate",
+                    unread > 0
+                      ? "font-bold text-gray-900 dark:text-white"
+                      : "font-semibold text-gray-900 dark:text-white"
+                  )}>
                     {other?.displayName ?? "Unknown"}
                   </p>
-                  <span className="text-xs text-gray-400 flex-shrink-0 ml-2">
+                  <span className="text-xs text-gray-400 flex-shrink-0">
                     {formatDate(updatedAt)}
                   </span>
                 </div>
-                <p className="text-xs text-gray-500 truncate mt-0.5">
-                  {conv.lastSenderId === user?.uid ? "You: " : ""}
-                  {conv.lastMessage || "Start a conversation"}
-                </p>
+                <div className="flex items-center justify-between gap-2 mt-0.5">
+                  <p className={cn(
+                    "text-xs truncate",
+                    unread > 0 ? "font-medium text-gray-700 dark:text-gray-300" : "text-gray-500"
+                  )}>
+                    {conv.lastSenderId === user?.uid ? "আপনি: " : ""}
+                    {conv.lastMessage || "কথোপকথন শুরু করুন"}
+                  </p>
+                  {/* Phase 5: unread badge */}
+                  {unread > 0 && (
+                    <span className="flex-shrink-0 min-w-[20px] h-5 bg-primary-600 text-white
+                                     text-[10px] font-bold rounded-full flex items-center
+                                     justify-center px-1">
+                      {unread > 9 ? "9+" : unread}
+                    </span>
+                  )}
+                </div>
               </div>
             </button>
           );

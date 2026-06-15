@@ -4,13 +4,14 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import {
   subscribeToConversations,
   subscribeToMessages,
+  subscribeToPresence,
   sendMessage,
   markAsSeen,
   getOrCreateConversation,
+  initPresence,
 } from "@/services/chatService";
 import { useAuthStore }  from "@/store/authStore";
-import type { Conversation, Message } from "@/types";
-import type { UserProfile } from "@/types";
+import type { Conversation, Message, UserPresence } from "@/types";
 
 // ─── Conversation list ────────────────────────────────────────────────────────
 export function useConversations() {
@@ -27,7 +28,13 @@ export function useConversations() {
     return () => unsub();
   }, [user]);
 
-  return { convs, loading };
+  // Phase 5: total unread across all conversations
+  const totalUnread = convs.reduce((sum, c) => {
+    const count = (c.unreadCounts ?? {})[user?.uid ?? ""] ?? 0;
+    return sum + count;
+  }, 0);
+
+  return { convs, loading, totalUnread };
 }
 
 // ─── Single conversation messages ─────────────────────────────────────────────
@@ -47,10 +54,6 @@ export function useMessages(conversationId: string) {
     return () => unsub();
   }, [conversationId]);
 
-  // BUG 6 FIX: previously scrolled using a 50ms timeout.
-  // On Vercel production, slow cold starts caused the scroll to be missed.
-  // Fix: now scrolls via useEffect whenever messages change,
-  // and the timeout is increased to 200ms so the DOM finishes rendering.
   useEffect(() => {
     if (messages.length === 0) return;
     const timer = setTimeout(() => {
@@ -59,7 +62,7 @@ export function useMessages(conversationId: string) {
     return () => clearTimeout(timer);
   }, [messages.length]);
 
-  // Mark as seen when messages arrive
+  // Mark as seen when messages arrive and window is visible
   useEffect(() => {
     if (!user || !conversationId || messages.length === 0) return;
     markAsSeen(conversationId, user.uid);
@@ -94,4 +97,28 @@ export function useStartConversation() {
   }, [user]);
 
   return { start, loading };
+}
+
+// ─── Phase 5: Presence for the current user ───────────────────────────────────
+export function useMyPresence() {
+  const { user } = useAuthStore();
+
+  useEffect(() => {
+    if (!user) return;
+    const cleanup = initPresence(user.uid);
+    return cleanup;
+  }, [user]);
+}
+
+// ─── Phase 5: Watch another user's presence ──────────────────────────────────
+export function useUserPresence(uid: string | undefined) {
+  const [presence, setPresence] = useState<UserPresence>({ online: false, lastSeen: null });
+
+  useEffect(() => {
+    if (!uid) return;
+    const unsub = subscribeToPresence(uid, setPresence);
+    return () => unsub();
+  }, [uid]);
+
+  return presence;
 }

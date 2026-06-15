@@ -5,17 +5,15 @@ import { Toaster } from "react-hot-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useState, useEffect } from "react";
 import { initSessionSync } from "@/services/authService";
+import { useMyPresence } from "@/hooks/useChat";
 
 function AuthInit({ children }: { children: React.ReactNode }) {
-  // ─── Critical Fix ─────────────────────────────────────────────────────────
-  // initSessionSync() is called here — this is a "use client" component,
-  // so it only runs after mounting in the browser.
-  // Previously it was top-level in authService.ts, which crashed during SSR.
   useEffect(() => {
     initSessionSync();
   }, []);
 
-  useAuth(); // starts Firebase auth listener
+  useAuth();         // starts Firebase auth listener
+  useMyPresence();   // Phase 5: tracks online/offline for current user
   return <>{children}</>;
 }
 
