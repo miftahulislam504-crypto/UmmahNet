@@ -19,6 +19,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import type { FriendRequest, Friendship, UserProfile } from "@/types";
+import { createNotification } from "@/services/notificationService";
 
 // ─── Send Friend Request ───────────────────────────────────────────────────────
 export async function sendFriendRequest(
@@ -28,12 +29,31 @@ export async function sendFriendRequest(
   const existing = await getFriendRequestBetween(senderId, receiverId);
   if (existing) throw new Error("ALREADY_EXISTS");
 
-  await addDoc(collection(db, "friendRequests"), {
+  const reqRef = await addDoc(collection(db, "friendRequests"), {
     senderId,
     receiverId,
     status:    "pending",
     createdAt: serverTimestamp(),
   });
+
+  // ── Phase 3: Notify receiver ──────────────────────────────────────────────
+  try {
+    const senderSnap = await getDoc(doc(db, "users", senderId));
+    const senderName = senderSnap.exists()
+      ? (senderSnap.data() as UserProfile).displayName
+      : "কেউ একজন";
+    await createNotification({
+      userId:        receiverId,
+      type:          "friend_request",
+      actorId:       senderId,
+      actorName:     senderName,
+      referenceId:   reqRef.id,
+      referenceType: "friendRequest",
+    });
+  } catch (err) {
+    // Notification failure must never break the main action
+    console.error("sendFriendRequest notification failed:", err);
+  }
 }
 
 // ─── Accept Friend Request ─────────────────────────────────────────────────────
@@ -57,6 +77,24 @@ export async function acceptFriendRequest(requestId: string): Promise<void> {
   batch.update(doc(db, "users", receiverId), { friendsCount: increment(1) });
 
   await batch.commit();
+
+  // ── Phase 3: Notify original sender that request was accepted ─────────────
+  try {
+    const acceptorSnap = await getDoc(doc(db, "users", receiverId));
+    const acceptorName = acceptorSnap.exists()
+      ? (acceptorSnap.data() as UserProfile).displayName
+      : "কেউ একজন";
+    await createNotification({
+      userId:        senderId,
+      type:          "friend_request_accepted",
+      actorId:       receiverId,
+      actorName:     acceptorName,
+      referenceId:   requestId,
+      referenceType: "friendRequestAccepted",
+    });
+  } catch (err) {
+    console.error("acceptFriendRequest notification failed:", err);
+  }
 }
 
 // ─── Reject / Cancel Request ───────────────────────────────────────────────────

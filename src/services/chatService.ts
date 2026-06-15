@@ -16,6 +16,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import type { Conversation, Message } from "@/types";
+import { createNotification } from "@/services/notificationService";
 
 // ─── Get or create private conversation ──────────────────────────────────────
 export async function getOrCreateConversation(
@@ -89,6 +90,33 @@ export async function sendMessage(
   });
 
   await batch.commit();
+
+  // ── Phase 3: Notify the other participant ────────────────────────────────
+  try {
+    const [convSnap, senderSnap] = await Promise.all([
+      getDoc(doc(db, "conversations", conversationId)),
+      getDoc(doc(db, "users", senderId)),
+    ]);
+    if (convSnap.exists()) {
+      const participants: string[] = convSnap.data().participants ?? [];
+      const recipientId = participants.find((uid) => uid !== senderId);
+      if (recipientId) {
+        const senderName = senderSnap.exists()
+          ? (senderSnap.data() as { displayName: string }).displayName
+          : "কেউ একজন";
+        await createNotification({
+          userId:        recipientId,
+          type:          "message",
+          actorId:       senderId,
+          actorName:     senderName,
+          referenceId:   conversationId,
+          referenceType: "conversation",
+        });
+      }
+    }
+  } catch (err) {
+    console.error("sendMessage notification failed:", err);
+  }
 }
 
 // ─── Mark messages as seen ────────────────────────────────────────────────────

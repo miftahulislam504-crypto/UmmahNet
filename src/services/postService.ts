@@ -20,6 +20,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import type { Post, Comment } from "@/types";
+import { createNotification } from "@/services/notificationService";
 
 const PAGE_SIZE = 10;
 
@@ -95,6 +96,7 @@ export async function toggleLike(postId: string, userId: string): Promise<boolea
 
   const batch = writeBatch(db);
   if (snap.exists()) {
+    // Unlike — no notification needed
     batch.delete(likeRef);
     batch.update(doc(db, "posts", postId), { likesCount: increment(-1) });
     await batch.commit();
@@ -109,6 +111,31 @@ export async function toggleLike(postId: string, userId: string): Promise<boolea
     });
     batch.update(doc(db, "posts", postId), { likesCount: increment(1) });
     await batch.commit();
+
+    // ── Phase 3: Notify post author ──────────────────────────────────────────
+    try {
+      const [postSnap, likerSnap] = await Promise.all([
+        getDoc(doc(db, "posts", postId)),
+        getDoc(doc(db, "users", userId)),
+      ]);
+      if (postSnap.exists()) {
+        const authorId  = (postSnap.data() as Post).authorId;
+        const likerName = likerSnap.exists()
+          ? (likerSnap.data() as { displayName: string }).displayName
+          : "কেউ একজন";
+        await createNotification({
+          userId:        authorId,
+          type:          "post_like",
+          actorId:       userId,
+          actorName:     likerName,
+          referenceId:   postId,
+          referenceType: "post",
+        });
+      }
+    } catch (err) {
+      console.error("toggleLike notification failed:", err);
+    }
+
     return true;
   }
 }
@@ -138,6 +165,25 @@ export async function addComment(
     createdAt:       serverTimestamp(),
   });
   await updateDoc(doc(db, "posts", postId), { commentsCount: increment(1) });
+
+  // ── Phase 3: Notify post author ──────────────────────────────────────────
+  try {
+    const postSnap = await getDoc(doc(db, "posts", postId));
+    if (postSnap.exists()) {
+      const postAuthorId = (postSnap.data() as Post).authorId;
+      await createNotification({
+        userId:        postAuthorId,
+        type:          "post_comment",
+        actorId:       authorId,
+        actorName:     authorName,
+        referenceId:   postId,
+        referenceType: "post",
+      });
+    }
+  } catch (err) {
+    console.error("addComment notification failed:", err);
+  }
+
   return ref2.id;
 }
 

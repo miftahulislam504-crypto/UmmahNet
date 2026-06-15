@@ -99,7 +99,7 @@ export interface Message {
 export interface Notification {
   id:            string;
   userId:        string;
-  type:          "friend_request" | "post_like" | "post_comment" | "message";
+  type:          "friend_request" | "friend_request_accepted" | "post_like" | "post_comment" | "message";
   actorId:       string;
   actorName:     string;
   referenceId:   string;
