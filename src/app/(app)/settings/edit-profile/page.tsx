@@ -11,6 +11,7 @@ import { useAuthStore } from "@/store/authStore";
 import { Avatar }  from "@/components/ui/Avatar";
 import { Input }   from "@/components/ui/Input";
 import { Button }  from "@/components/ui/Button";
+import { buildSearchTokens } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 // Image → Base64 (max 500px, quality 0.8)
@@ -79,10 +80,11 @@ export default function EditProfilePage() {
       }
 
       const updates = {
-        displayName: form.displayName.trim(),
-        username:    form.username.trim(),
-        bio:         form.bio.trim(),
+        displayName:  form.displayName.trim(),
+        username:     form.username.trim(),
+        bio:          form.bio.trim(),
         photoURL,
+        searchTokens: buildSearchTokens(form.displayName.trim(), form.username.trim()), // Phase 4
       };
 
       await updateDoc(doc(db, "users", profile.uid), updates);

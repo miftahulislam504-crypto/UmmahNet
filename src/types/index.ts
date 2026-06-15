@@ -14,6 +14,7 @@ export interface UserProfile {
   isVerified:     boolean;
   isBlocked:      boolean;
   privacySetting: "public" | "friends" | "private";
+  searchTokens:   string[];   // Phase 4 — word-level search tokens (BN + EN)
   createdAt:      Timestamp;
 }
 

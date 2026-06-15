@@ -19,6 +19,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import type { FriendRequest, Friendship, UserProfile } from "@/types";
+import { buildSearchTokens } from "@/lib/utils";
 import { createNotification } from "@/services/notificationService";
 
 // ─── Send Friend Request ───────────────────────────────────────────────────────
@@ -262,23 +263,42 @@ export async function getRelationStatus(
 }
 
 // ─── Search Users ─────────────────────────────────────────────────────────────
+// Phase 4: uses searchTokens array-contains instead of username prefix range.
+// Supports Bengali displayName and partial English username matching.
+// Firestore only supports one array-contains per query, so we pass a single
+// normalised token and return up to 20 matches (excluding self).
 export async function searchUsers(
   searchTerm: string,
   currentUid: string
 ): Promise<UserProfile[]> {
-  const term = searchTerm.toLowerCase().trim();
-  if (!term) return [];
+  const raw = searchTerm.toLowerCase().trim();
+  if (!raw) return [];
+
+  // Take only the first word of the query to build the lookup token.
+  // Multi-word queries ("মিফতাহুল ইসলাম") are handled by searching on the
+  // first word then client-side filtering the second.
+  const words  = raw.split(/[\s\u200B_.\-]+/).filter(Boolean);
+  const token  = words[0];          // Firestore lookup key
+  const rest   = words.slice(1);    // client-side secondary filter terms
 
   const q = query(
     collection(db, "users"),
-    where("username", ">=", term),
-    where("username", "<=", term + "\uf8ff"),
-    limit(20)
+    where("searchTokens", "array-contains", token),
+    limit(30)
   );
   const snap = await getDocs(q);
+
   return snap.docs
     .map((d) => d.data() as UserProfile)
-    .filter((u) => u.uid !== currentUid);
+    .filter((u) => {
+      if (u.uid === currentUid) return false;
+      if (rest.length === 0) return true;
+      // Secondary filter: every remaining word must appear somewhere in the
+      // user's tokens (word-level) or their displayName / username directly.
+      const haystack = (u.displayName + " " + u.username).toLowerCase();
+      return rest.every((w) => haystack.includes(w));
+    })
+    .slice(0, 20);
 }
 
 // ─── Get Mutual Friends Count ─────────────────────────────────────────────────

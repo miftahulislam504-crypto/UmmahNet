@@ -17,6 +17,7 @@ import {
 } from "firebase/firestore";
 import { auth, db, googleProvider } from "@/lib/firebase/config";
 import type { UserProfile } from "@/types";
+import { buildSearchTokens } from "@/lib/utils";
 
 // ─── Session cookie helper ────────────────────────────────────────────────────
 // ─── BUG FIX: Secure cookie was gated on NODE_ENV, not the real connection ──
@@ -159,10 +160,12 @@ async function createUserDocument(
   user:  User,
   extra: { displayName?: string; username: string }
 ): Promise<void> {
+  const dn      = extra.displayName ?? user.displayName ?? "";
+  const uname   = extra.username;
   const profile = {
     uid:            user.uid,
-    username:       extra.username,
-    displayName:    extra.displayName ?? user.displayName ?? "",
+    username:       uname,
+    displayName:    dn,
     email:          user.email ?? "",
     photoURL:       user.photoURL ?? "",
     coverPhoto:     "",
@@ -172,6 +175,7 @@ async function createUserDocument(
     isVerified:     false,
     isBlocked:      false,
     privacySetting: "public",
+    searchTokens:   buildSearchTokens(dn, uname),   // Phase 4
     createdAt:      serverTimestamp(),
   };
   await setDoc(doc(db, "users", user.uid), profile);

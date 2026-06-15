@@ -6,6 +6,7 @@ import {
   deleteDoc,
   getDoc,
   getDocs,
+  updateDoc,
   query,
   where,
   orderBy,
@@ -16,7 +17,8 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
-import type { Post } from "@/types";
+import type { Post, UserProfile } from "@/types";
+import { buildSearchTokens } from "@/lib/utils";
 
 // ─── Save / Unsave Post ───────────────────────────────────────────────────────
 export async function toggleSavePost(userId: string, postId: string): Promise<boolean> {
@@ -98,7 +100,31 @@ export function renderWithHashtags(text: string): { type: "text" | "hashtag"; va
   }));
 }
 
-// ─── Search posts by hashtag ──────────────────────────────────────────────────
+// ─── Phase 4: Backfill searchTokens for existing users ───────────────────────
+// Call this once per session for the logged-in user.
+// It's idempotent: if searchTokens already matches the current name/username,
+// it skips the write.
+export async function backfillSearchTokens(uid: string): Promise<void> {
+  try {
+    const snap = await getDoc(doc(db, "users", uid));
+    if (!snap.exists()) return;
+
+    const data         = snap.data() as UserProfile;
+    const freshTokens  = buildSearchTokens(data.displayName, data.username);
+    const storedTokens: string[] = data.searchTokens ?? [];
+
+    // Skip if tokens already present and count matches (avoid unnecessary writes)
+    if (
+      storedTokens.length === freshTokens.length &&
+      freshTokens.every((t) => storedTokens.includes(t))
+    ) return;
+
+    await updateDoc(doc(db, "users", uid), { searchTokens: freshTokens });
+  } catch (err) {
+    // Non-critical — silently ignore so app startup is never blocked
+    console.error("backfillSearchTokens failed:", err);
+  }
+}
 export async function searchByHashtag(tag: string): Promise<(Post & { id: string })[]> {
   const normalised = tag.startsWith("#") ? tag.toLowerCase() : `#${tag.toLowerCase()}`;
   const q = query(
