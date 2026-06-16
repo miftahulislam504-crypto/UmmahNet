@@ -60,7 +60,7 @@ export function EditProfileModal({ profile, onClose }: Props) {
   }
 
   async function handleSave() {
-    if (!form.displayName.trim()) return toast.error("Name cannot be empty");
+    if (!form.displayName.trim()) return toast.error("নাম খালি রাখা যাবে না");
     setLoading(true);
 
     try {
@@ -87,11 +87,11 @@ export function EditProfileModal({ profile, onClose }: Props) {
 
       await updateDoc(doc(db, "users", profile.uid), updates);
       setProfile({ ...profile, ...updates });
-      toast.success("Profile updated!");
+      toast.success("প্রোফাইল আপডেট হয়েছে!");
       onClose();
     } catch (err) {
       console.error(err);
-      toast.error("Update failed. Please try again.");
+      toast.error("আপডেট ব্যর্থ হয়েছে, আবার চেষ্টা করুন");
     } finally {
       setLoading(false);
     }
@@ -119,7 +119,7 @@ export function EditProfileModal({ profile, onClose }: Props) {
 
           {/* Header */}
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Edit Profile</h2>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">প্রোফাইল সম্পাদনা</h2>
             <button
               onClick={onClose}
               className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -161,24 +161,24 @@ export function EditProfileModal({ profile, onClose }: Props) {
           {/* Fields */}
           <div className="flex flex-col gap-4 pb-2">
             <Input
-              label="Full name"
-              placeholder="Your name"
+              label="পুরো নাম"
+              placeholder="আপনার নাম"
               value={form.displayName}
               onChange={set("displayName")}
             />
             <Input
-              label="Username"
+              label="ইউজারনেম"
               placeholder="@username"
               value={form.username}
               onChange={set("username")}
             />
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Bio</label>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">বায়ো</label>
               <textarea
                 value={form.bio}
                 onChange={set("bio")}
                 rows={3}
-                placeholder="Tell people a little about yourself..."
+                placeholder="নিজের সম্পর্কে কিছু লিখুন..."
                 className="w-full bg-gray-100 dark:bg-gray-800 border border-transparent
                            focus:border-primary-500 focus:bg-white dark:focus:bg-gray-900
                            rounded-xl px-4 py-2.5 text-sm outline-none transition-all

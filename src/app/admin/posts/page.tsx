@@ -48,9 +48,9 @@ export default function AdminPostsPage() {
     try {
       await adminDeletePost(postId);
       setPosts((prev) => prev.filter((p) => p.id !== postId));
-      toast.success("Post deleted");
+      toast.success("পোস্ট মুছে ফেলা হয়েছে");
     } catch {
-      toast.error("Failed to delete");
+      toast.error("মুছতে ব্যর্থ হয়েছে");
     } finally {
       setDeleting(null);
     }
@@ -59,8 +59,8 @@ export default function AdminPostsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Post Moderation</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Review and remove posts</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">পোস্ট মডারেশন</h1>
+        <p className="text-sm text-gray-500 mt-0.5">পোস্ট পর্যালোচনা ও অপসারণ</p>
       </div>
 
       {loading && (
@@ -75,12 +75,12 @@ export default function AdminPostsPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 dark:bg-gray-800 text-xs text-gray-500 uppercase">
                 <tr>
-                  <th className="px-5 py-3 text-left">Author</th>
-                  <th className="px-5 py-3 text-left">Content</th>
-                  <th className="px-5 py-3 text-left">Likes</th>
-                  <th className="px-5 py-3 text-left">Comments</th>
-                  <th className="px-5 py-3 text-left">Date</th>
-                  <th className="px-5 py-3 text-left">Actions</th>
+                  <th className="px-5 py-3 text-left">লেখক</th>
+                  <th className="px-5 py-3 text-left">কন্টেন্ট</th>
+                  <th className="px-5 py-3 text-left">লাইক</th>
+                  <th className="px-5 py-3 text-left">মন্তব্য</th>
+                  <th className="px-5 py-3 text-left">তারিখ</th>
+                  <th className="px-5 py-3 text-left">কার্যক্রম</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">

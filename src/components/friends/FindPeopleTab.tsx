@@ -15,7 +15,7 @@ export function FindPeopleTab() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
-            placeholder="Search by username or name..."
+            placeholder="ইউজারনেম বা নাম দিয়ে খুঁজুন..."
             value={term}
             onChange={(e) => setTerm(e.target.value)}
             className="w-full bg-gray-100 dark:bg-gray-800 rounded-xl pl-10 pr-4 py-2.5

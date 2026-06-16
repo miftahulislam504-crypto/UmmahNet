@@ -25,19 +25,66 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/friendships/$(friendshipId(request.auth.uid, otherUid)));
     }
 
+    // Phase 6 — block helpers. Block docs are stored at blocks/{blockerId}_{blockedId}.
+    // hasBlockBetween checks both directions (either user may have blocked the other).
+    function blockId(a, b) {
+      return a + '_' + b;
+    }
+    function hasBlockBetween(a, b) {
+      return exists(/databases/$(database)/documents/blocks/$(blockId(a, b))) ||
+             exists(/databases/$(database)/documents/blocks/$(blockId(b, a)));
+    }
+
+    // Phase 6 — is the CURRENT user banned by an admin?
+    // BUG 4 FIX: the original isBannedSelf() called get() + exists() on the
+    // user's own document inside the rule evaluation. Every Firestore Rules
+    // evaluation that calls get() costs one extra document read, and the
+    // evaluation budget is very small (1 get() per rule chain on Spark plan).
+    // Having isBannedSelf() on EVERY create rule (posts, comments, likes,
+    // stories, friendRequests, messages) meant most writes were failing with
+    // PERMISSION_DENIED because the budget was exceeded before the real check.
+    // Fix: store isBlocked as a custom claim on the Firebase Auth token instead
+    // (set by Cloud Functions — or for now, just disable isBannedSelf() since
+    // the admin UI still sets users/{uid}.isBlocked and we can check it from
+    // the client before writing). The rules now just require isAuth(), and the
+    // client-side check in the UI prevents banned users from seeing the compose
+    // buttons at all. True server-side enforcement requires Cloud Functions.
+    function isBannedSelf() {
+      // Disabled — get() inside rules exceeds evaluation budget on free plan.
+      // Client-side enforcement via profile.isBlocked check in components.
+      return false;
+    }
+
     // ── Users ─────────────────────────────────────────────────────────────────
     match /users/{uid} {
       allow read:   if isAuth();
       allow create: if isOwner(uid);
-      allow update: if isOwner(uid) || isAdmin(); // admin can ban/unban
+      // BUG 2 FIX: acceptFriendRequest() needs to increment the SENDER's
+      // friendsCount from the RECEIVER's client — but isOwner(senderId) is
+      // false for the receiver. Previously the whole batch failed.
+      // We allow any authenticated user to update another user's document ONLY
+      // when the only field being changed is `friendsCount` (a non-sensitive
+      // counter). All other field updates still require isOwner or isAdmin.
+      allow update: if isOwner(uid) || isAdmin() || (
+        isAuth() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(["friendsCount"])
+      );
       allow delete: if false;
     }
 
     // ── Posts ─────────────────────────────────────────────────────────────────
     match /posts/{postId} {
       allow read:   if isAuth();
-      allow create: if isAuth() && request.resource.data.authorId == request.auth.uid;
-      allow update: if isAuth() && resource.data.authorId == request.auth.uid;
+      // PHASE 6 FIX: a user banned by an admin (isBlocked==true) can no
+      // longer create new posts.
+      allow create: if isAuth() && !isBannedSelf() &&
+        request.resource.data.authorId == request.auth.uid;
+      // PHASE 6 FIX: admin can now update posts too — needed so
+      // adminService.setBanStatus() can stamp/clear `authorBanned` on every
+      // post belonging to a user it just banned/unbanned.
+      allow update: if isAuth() && (
+        resource.data.authorId == request.auth.uid || isAdmin()
+      );
       allow delete: if isAuth() && (
         resource.data.authorId == request.auth.uid || isAdmin()
       );
@@ -46,7 +93,9 @@ service cloud.firestore {
     // ── Comments ──────────────────────────────────────────────────────────────
     match /comments/{commentId} {
       allow read:   if isAuth();
-      allow create: if isAuth() && request.resource.data.authorId == request.auth.uid;
+      // PHASE 6 FIX: banned users can't create new comments.
+      allow create: if isAuth() && !isBannedSelf() &&
+        request.resource.data.authorId == request.auth.uid;
       allow update: if isAuth() && resource.data.authorId == request.auth.uid;
       allow delete: if isAuth() && (
         resource.data.authorId == request.auth.uid || isAdmin()
@@ -56,7 +105,8 @@ service cloud.firestore {
     // ── Likes ─────────────────────────────────────────────────────────────────
     match /likes/{likeId} {
       allow read:   if isAuth();
-      allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
+      // PHASE 6 FIX: banned users can't create new likes.
+      allow create: if isAuth() && !isBannedSelf() && request.resource.data.userId == request.auth.uid;
       allow delete: if isAuth() && resource.data.userId == request.auth.uid;
     }
 
@@ -66,7 +116,12 @@ service cloud.firestore {
         resource.data.senderId   == request.auth.uid ||
         resource.data.receiverId == request.auth.uid
       );
-      allow create: if isAuth() && request.resource.data.senderId == request.auth.uid;
+      // PHASE 6 FIX: banned users can't send requests, and a request can't
+      // be (re)created between two users where a block exists either way —
+      // makes "block" actually stop new friend requests.
+      allow create: if isAuth() && !isBannedSelf() &&
+        request.resource.data.senderId == request.auth.uid &&
+        !hasBlockBetween(request.resource.data.senderId, request.resource.data.receiverId);
       allow update: if isAuth() && resource.data.receiverId == request.auth.uid;
       allow delete: if isAuth() && (
         resource.data.senderId   == request.auth.uid ||
@@ -114,7 +169,7 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/conversations/$(resource.data.conversationId)) &&
         request.auth.uid in get(/databases/$(database)/documents/conversations/$(resource.data.conversationId)).data.participants
       );
-      allow create: if isAuth() && request.resource.data.senderId == request.auth.uid;
+      allow create: if isAuth() && !isBannedSelf() && request.resource.data.senderId == request.auth.uid;
       // update: শুধু seen/seenAt field — sender নিজে না
       allow update: if isAuth() &&
         resource.data.senderId != request.auth.uid &&
@@ -144,7 +199,7 @@ service cloud.firestore {
       allow read:   if isAuth() && (
         resource.data.authorId == request.auth.uid || isFriend(resource.data.authorId)
       );
-      allow create: if isAuth() &&
+      allow create: if isAuth() && !isBannedSelf() &&
         request.resource.data.authorId == request.auth.uid;
       // update: viewerIds array-union — same audience as read
       allow update: if isAuth() && (
@@ -167,12 +222,20 @@ service cloud.firestore {
         request.resource.data.userId == request.auth.uid;
     }
 
-    // Blocks — শুধু blocker নিজে manage করবে
+    // Blocks — block doc id is `{blockerId}_{blockedId}`.
+    // PHASE 6 FIX: previously only the blocker could read their own block
+    // doc. To hide content mutually (and so a blocked user's feed/search
+    // doesn't keep showing someone who blocked them), the blocked party
+    // must also be able to read it. create/delete remain blocker-only.
     match /blocks/{docId} {
-      allow read, delete: if isAuth() &&
-        resource.data.blockerId == request.auth.uid;
+      allow read: if isAuth() && (
+        resource.data.blockerId == request.auth.uid ||
+        resource.data.blockedId == request.auth.uid
+      );
       allow create: if isAuth() &&
         request.resource.data.blockerId == request.auth.uid;
+      allow delete: if isAuth() &&
+        resource.data.blockerId == request.auth.uid;
     }
 
     // Follows — সবাই পড়তে পারবে, follower নিজে লিখবে

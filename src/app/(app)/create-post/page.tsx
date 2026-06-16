@@ -11,9 +11,9 @@ import type { Post }     from "@/types";
 import Image             from "next/image";
 
 const VISIBILITY_OPTIONS: { value: Post["visibility"]; label: string; icon: typeof Globe }[] = [
-  { value: "public",  label: "Everyone", icon: Globe  },
-  { value: "friends", label: "Friends",  icon: Users  },
-  { value: "private", label: "Only me",  icon: Lock   },
+  { value: "public",  label: "সবার জন্য",  icon: Globe },
+  { value: "friends", label: "বন্ধুরা",     icon: Users },
+  { value: "private", label: "শুধু আমি",   icon: Lock  },
 ];
 
 export default function CreatePostPage() {
@@ -61,7 +61,7 @@ export default function CreatePostPage() {
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h1 className="font-bold text-gray-900 dark:text-white text-lg flex-1">Create Post</h1>
+        <h1 className="font-bold text-gray-900 dark:text-white text-lg flex-1">পোস্ট তৈরি করুন</h1>
         <Button
           size="sm"
           loading={createPost.isPending}
@@ -116,7 +116,7 @@ export default function CreatePostPage() {
           autoFocus
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder={`What's on your mind, ${profile.displayName.split(" ")[0]}?`}
+          placeholder={`কী ভাবছেন, ${profile.displayName.split(" ")[0]}?`}
           rows={6}
           className="w-full bg-transparent text-gray-900 dark:text-white
                      placeholder-gray-400 resize-none outline-none text-[16px] leading-relaxed"
@@ -144,7 +144,7 @@ export default function CreatePostPage() {
 
         {/* Toolbar */}
         <div>
-          <p className="text-xs font-medium text-gray-500 mb-2">Add to your post</p>
+          <p className="text-xs font-medium text-gray-500 mb-2">পোস্টে যুক্ত করুন</p>
           <div className="flex gap-2">
             <button
               onClick={() => fileRef.current?.click()}

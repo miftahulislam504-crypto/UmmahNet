@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Flag, CheckCircle, XCircle, Trash2, Loader2, ExternalLink } from "lucide-react";
+import { Flag, CheckCircle, XCircle, Trash2, Loader2, ExternalLink, ShieldBan } from "lucide-react";
 import Link from "next/link";
-import { getPendingReports, resolveReport, adminDeletePost } from "@/services/adminService";
+import { getPendingReports, resolveReport, adminDeletePost, adminDeleteComment, setBanStatus } from "@/services/adminService";
 import { formatDate } from "@/lib/utils";
 import type { Report } from "@/services/adminService";
 import toast from "react-hot-toast";
@@ -17,18 +17,28 @@ export default function AdminReportsPage() {
     getPendingReports().then((r) => { setReports(r); setLoading(false); });
   }, []);
 
+  // PHASE 6: generalized — `extra` performs the actual moderation action
+  // (delete the reported post/comment, or ban the reported user) before the
+  // report itself is marked resolved. Previously only "post" reports had a
+  // real action (delete post); "user" and "comment" reports could only be
+  // Resolved/Dismissed with no effect on the offending content/account.
   async function handleAction(
     reportId: string,
     action:   "resolved" | "dismissed",
-    targetId?: string,
-    deletePost?: boolean
+    extra?:   { type: "deletePost" | "deleteComment" | "banUser"; targetId: string }
   ) {
     setActing(reportId);
     try {
+      if (extra?.type === "deletePost")    await adminDeletePost(extra.targetId);
+      if (extra?.type === "deleteComment") await adminDeleteComment(extra.targetId);
+      if (extra?.type === "banUser")       await setBanStatus(extra.targetId, true);
       await resolveReport(reportId, action);
-      if (deletePost && targetId) await adminDeletePost(targetId);
       setReports((prev) => prev.filter((r) => r.id !== reportId));
-      toast.success(action === "resolved" ? "Report resolved" : "Report dismissed");
+      toast.success(
+        extra?.type === "banUser"   ? "User banned" :
+        extra?.type === "deletePost" || extra?.type === "deleteComment" ? "Content removed" :
+        action === "resolved" ? "Report resolved" : "Report dismissed"
+      );
     } catch {
       toast.error("Action failed");
     } finally {
@@ -79,25 +89,56 @@ export default function AdminReportsPage() {
 
               {/* Action buttons */}
               <div className="flex items-center gap-2 flex-shrink-0">
-                {r.targetType === "post" && (
-                  <Link href={`/post/${r.targetId}`} target="_blank">
+                {(r.targetType === "post" || r.targetType === "user") && (
+                  <Link
+                    href={r.targetType === "post" ? `/post/${r.targetId}` : `/profile/${r.targetId}`}
+                    target="_blank"
+                  >
                     <button className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                       <ExternalLink className="w-4 h-4" />
                     </button>
                   </Link>
                 )}
 
-                {/* Delete content + resolve */}
+                {/* Delete post + resolve */}
                 {r.targetType === "post" && (
                   <button
                     disabled={acting === r.id}
-                    onClick={() => handleAction(r.id, "resolved", r.targetId, true)}
+                    onClick={() => handleAction(r.id, "resolved", { type: "deletePost", targetId: r.targetId })}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
                                text-red-500 bg-red-50 dark:bg-red-900/20 hover:bg-red-100
                                dark:hover:bg-red-900/30 transition-colors"
                   >
                     {acting === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                     Delete post
+                  </button>
+                )}
+
+                {/* Delete comment + resolve — PHASE 6: comment reports previously had no action */}
+                {r.targetType === "comment" && (
+                  <button
+                    disabled={acting === r.id}
+                    onClick={() => handleAction(r.id, "resolved", { type: "deleteComment", targetId: r.targetId })}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
+                               text-red-500 bg-red-50 dark:bg-red-900/20 hover:bg-red-100
+                               dark:hover:bg-red-900/30 transition-colors"
+                  >
+                    {acting === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                    Delete comment
+                  </button>
+                )}
+
+                {/* Ban user + resolve — PHASE 6: user reports previously had no action */}
+                {r.targetType === "user" && (
+                  <button
+                    disabled={acting === r.id}
+                    onClick={() => handleAction(r.id, "resolved", { type: "banUser", targetId: r.targetId })}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
+                               text-red-500 bg-red-50 dark:bg-red-900/20 hover:bg-red-100
+                               dark:hover:bg-red-900/30 transition-colors"
+                  >
+                    {acting === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldBan className="w-3.5 h-3.5" />}
+                    Ban user
                   </button>
                 )}
 

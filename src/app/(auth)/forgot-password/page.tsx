@@ -16,18 +16,18 @@ export default function ForgotPasswordPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email.trim()) return toast.error("Please enter your email");
+    if (!email.trim()) return toast.error("ইমেইল দিন");
 
     setLoading(true);
     try {
       await sendPasswordResetEmail(auth, email.trim());
       setSent(true);
-      toast.success("Reset link sent");
+      toast.success("রিসেট লিংক পাঠানো হয়েছে");
     } catch (err: any) {
       const msg =
         err.code === "auth/user-not-found"
-          ? "No account found with this email"
-          : "Failed to send, please try again";
+          ? "এই ইমেইলে কোনো অ্যাকাউন্ট নেই"
+          : "পাঠানো ব্যর্থ হয়েছে, আবার চেষ্টা করুন";
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -42,11 +42,11 @@ export default function ForgotPasswordPage() {
             <Mail className="w-8 h-8 text-green-600" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Email sent
+            ইমেইল পাঠানো হয়েছে
           </h2>
           <p className="text-sm text-gray-500">
             <span className="font-medium text-gray-700 dark:text-gray-300">{email}</span>
-            {" "}— a password reset link has been sent. Please check your inbox.
+            {" "}— পাসওয়ার্ড রিসেট লিংক পাঠানো হয়েছে। আপনার ইনবক্স চেক করুন।
           </p>
         </div>
 
@@ -55,7 +55,7 @@ export default function ForgotPasswordPage() {
           className="flex items-center justify-center gap-2 text-sm text-primary-600 hover:underline font-medium"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to login
+          লগইনে ফিরুন
         </Link>
       </>
     );
@@ -64,15 +64,15 @@ export default function ForgotPasswordPage() {
   return (
     <>
       <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-        Reset password
+        পাসওয়ার্ড রিসেট করুন
       </h2>
       <p className="text-sm text-gray-500 mb-6">
-        Enter your email and we'll send you a reset link
+        আপনার ইমেইল দিন, আমরা রিসেট লিংক পাঠাবো
       </p>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <Input
-          label="Email"
+          label="ইমেইল"
           type="email"
           placeholder="name@email.com"
           leftIcon={<Mail className="w-4 h-4" />}
@@ -81,7 +81,7 @@ export default function ForgotPasswordPage() {
         />
 
         <Button type="submit" loading={loading} className="w-full justify-center">
-          Send reset link
+          রিসেট লিংক পাঠান
         </Button>
       </form>
 
@@ -90,7 +90,7 @@ export default function ForgotPasswordPage() {
         className="flex items-center justify-center gap-2 mt-5 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
-        Back to login
+        লগইনে ফিরুন
       </Link>
     </>
   );

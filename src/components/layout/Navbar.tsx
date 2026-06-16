@@ -91,7 +91,7 @@ export function Navbar() {
               <Avatar src={profile.photoURL} name={profile.displayName} size="sm" />
             </Link>
           ) : (
-            <Link href="/login" className="btn-primary text-sm">Log in</Link>
+            <Link href="/login" className="btn-primary text-sm">লগইন</Link>
           )}
         </div>
       </div>
@@ -108,7 +108,7 @@ export function Navbar() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search UmmahNet..."
+              placeholder="UmmahNet-এ খুঁজুন..."
               className="flex-1 bg-transparent text-sm text-gray-700 dark:text-gray-200 placeholder:text-gray-400 outline-none"
             />
           </form>

@@ -34,16 +34,16 @@ export default function AdminDashboard() {
   }
 
   const statCards = [
-    { label: "Total Users", value: stats?.totalUsers ?? 0,     icon: Users,     color: "bg-blue-500"   },
-    { label: "Total Posts",       value: stats?.totalPosts ?? 0,     icon: FileText,  color: "bg-green-500"  },
-    { label: "Pending Reports", value: stats?.pendingReports ?? 0, icon: Flag,    color: "bg-red-500"    },
+    { label: "মোট ইউজার", value: stats?.totalUsers ?? 0,     icon: Users,     color: "bg-blue-500"   },
+    { label: "মোট পোস্ট",       value: stats?.totalPosts ?? 0,     icon: FileText,  color: "bg-green-500"  },
+    { label: "অমীমাংসিত রিপোর্ট", value: stats?.pendingReports ?? 0, icon: Flag,    color: "bg-red-500"    },
   ];
 
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-0.5">UmmahNet administration panel</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">ড্যাশবোর্ড</h1>
+        <p className="text-sm text-gray-500 mt-0.5">UmmahNet অ্যাডমিন প্যানেল</p>
       </div>
 
       {/* Stat cards */}
@@ -64,10 +64,10 @@ export default function AdminDashboard() {
       {/* Recent reports */}
       <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-          <h2 className="font-bold text-gray-900 dark:text-white">Recent Reports</h2>
+          <h2 className="font-bold text-gray-900 dark:text-white">সাম্প্রতিক রিপোর্ট</h2>
         </div>
         {reports.length === 0 ? (
-          <div className="p-10 text-center text-gray-500 text-sm">No pending reports</div>
+          <div className="p-10 text-center text-gray-500 text-sm">কোনো অমীমাংসিত রিপোর্ট নেই</div>
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-gray-800">
             {reports.map((r) => (

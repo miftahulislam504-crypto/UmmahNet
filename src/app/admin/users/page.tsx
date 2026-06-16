@@ -31,9 +31,9 @@ export default function AdminUsersPage() {
     try {
       await setBanStatus(user.uid, !user.isBlocked);
       setUsers((prev) => prev.map((u) => u.uid === user.uid ? { ...u, isBlocked: !u.isBlocked } : u));
-      toast.success(user.isBlocked ? "Ban removed" : "User banned");
+      toast.success(user.isBlocked ? "ব্যান তুলে নেওয়া হয়েছে" : "ইউজার ব্যান করা হয়েছে");
     } catch {
-      toast.error("Action failed");
+      toast.error("কাজটি ব্যর্থ হয়েছে");
     } finally {
       setActing(null);
     }
@@ -43,7 +43,7 @@ export default function AdminUsersPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Users</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">ইউজার</h1>
           <p className="text-sm text-gray-500 mt-0.5">{users.length} registered</p>
         </div>
       </div>
@@ -54,7 +54,7 @@ export default function AdminUsersPage() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by username..."
+          placeholder="ইউজারনেম দিয়ে খুঁজুন..."
           className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700
                      rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none focus:border-primary-500 transition-all"
         />
@@ -69,12 +69,12 @@ export default function AdminUsersPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 dark:bg-gray-800 text-xs text-gray-500 uppercase">
                 <tr>
-                  <th className="px-5 py-3 text-left">Users</th>
-                  <th className="px-5 py-3 text-left">Username</th>
-                  <th className="px-5 py-3 text-left">Posts</th>
-                  <th className="px-5 py-3 text-left">Joined</th>
-                  <th className="px-5 py-3 text-left">Status</th>
-                  <th className="px-5 py-3 text-left">Actions</th>
+                  <th className="px-5 py-3 text-left">ইউজার</th>
+                  <th className="px-5 py-3 text-left">ইউজারনেম</th>
+                  <th className="px-5 py-3 text-left">পোস্ট</th>
+                  <th className="px-5 py-3 text-left">যোগদান</th>
+                  <th className="px-5 py-3 text-left">স্ট্যাটাস</th>
+                  <th className="px-5 py-3 text-left">কার্যক্রম</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -98,7 +98,7 @@ export default function AdminUsersPage() {
                           : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
                         }`}
                       >
-                        {u.isBlocked ? "Banned" : "Active"}
+                        {u.isBlocked ? "ব্যানড" : "সক্রিয়"}
                       </span>
                     </td>
                     <td className="px-5 py-3">

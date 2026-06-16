@@ -16,6 +16,7 @@ import {
   type RelationStatus,
 } from "@/services/friendService";
 import { useAuthStore } from "@/store/authStore";
+import { useHiddenUsers } from "@/hooks/useBlocks";
 import toast from "react-hot-toast";
 
 // ─── Relation status for a single user ────────────────────────────────────────
@@ -110,6 +111,7 @@ export function useFriends(uid?: string) {
 // ─── User search ──────────────────────────────────────────────────────────────
 export function useUserSearch() {
   const { user }    = useAuthStore();
+  const { hiddenIds } = useHiddenUsers();
   const [term, setTerm] = useState("");
   const [results, setResults] = useState<Awaited<ReturnType<typeof searchUsers>>>([]);
   const [loading, setLoading] = useState(false);
@@ -120,13 +122,15 @@ export function useUserSearch() {
       setLoading(true);
       try {
         const res = await searchUsers(term, user.uid);
-        setResults(res);
+        // PHASE 6: hide anyone with a block relationship (either direction)
+        // from "find people" results.
+        setResults(res.filter((u) => !hiddenIds.has(u.uid)));
       } finally {
         setLoading(false);
       }
     }, 400);
     return () => clearTimeout(timer);
-  }, [term, user]);
+  }, [term, user, hiddenIds]);
 
   return { term, setTerm, results, loading };
 }

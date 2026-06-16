@@ -100,7 +100,7 @@ export function StoryBar() {
                              text-center leading-tight truncate"
                   style={{ width: CARD_W }}
                 >
-                  {myGroup ? "Your story" : "Add story"}
+                  {myGroup ? "আমার স্টোরি" : "স্টোরি যোগ করুন"}
                 </span>
               </div>
             );
@@ -109,7 +109,7 @@ export function StoryBar() {
           <input
             ref={fileRef}
             type="file"
-            accept="image/*"
+            accept="image/*,video/*"
             className="hidden"
             onChange={handleFile}
           />

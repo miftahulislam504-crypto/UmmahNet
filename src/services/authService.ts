@@ -32,7 +32,18 @@ function setSessionCookie(token: string) {
     typeof window !== "undefined" && window.location.protocol === "https:"
       ? "; Secure"
       : "";
-  document.cookie = `un_session=${token}; path=/; max-age=3600; SameSite=Lax${secure}`;
+  // BUG 1 FIX: was max-age=3600 (1 hour). Firebase Auth tokens expire every
+  // hour but onIdTokenChanged auto-refreshes them and calls this function
+  // again with the new token. The problem: if the tab is left open but
+  // becomes inactive (phone screen-off, background tab) the refresh fires
+  // but the NEW cookie is written — however if the process was suspended
+  // before the refresh, the 1-hour cookie had already expired. On next page
+  // load the middleware finds no cookie and redirects to /login even though
+  // Firebase's IndexedDB session is still alive.
+  // Fix: set a 7-day cookie. The actual security boundary is Firestore Rules
+  // (not this cookie) — middleware only uses it as a cheap SSR redirect guard.
+  // onIdTokenChanged still overwrites it with a fresh JWT every hour.
+  document.cookie = `un_session=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax${secure}`;
 }
 
 function clearSessionCookie() {

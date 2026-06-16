@@ -19,9 +19,9 @@ import type { UserProfile } from "@/types";
 type Section = "privacy" | "password" | "notifications";
 
 const sections: { id: Section; label: string; desc: string; icon: typeof Shield }[] = [
-  { id: "privacy",       label: "Privacy",       desc: "Control who sees your profile", icon: Shield },
-  { id: "password",      label: "Password",      desc: "Change your account password",  icon: Lock   },
-  { id: "notifications", label: "Notifications", desc: "Manage notification preferences", icon: Bell  },
+  { id: "privacy",       label: "গোপনীয়তা",    desc: "কে আপনার প্রোফাইল দেখতে পাবে তা নিয়ন্ত্রণ করুন", icon: Shield },
+  { id: "password",      label: "পাসওয়ার্ড",    desc: "আপনার অ্যাকাউন্টের পাসওয়ার্ড পরিবর্তন করুন",      icon: Lock   },
+  { id: "notifications", label: "নোটিফিকেশন", desc: "নোটিফিকেশন পছন্দ পরিচালনা করুন",                 icon: Bell  },
 ];
 
 export default function SettingsPage() {
@@ -31,7 +31,7 @@ export default function SettingsPage() {
 
   async function handleLogout() {
     await logout();
-    toast.success("Logged out successfully");
+    toast.success("লগ আউট সফল হয়েছে");
     router.push("/login");
   }
 
@@ -66,8 +66,8 @@ export default function SettingsPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="card p-4">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">Settings</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Manage your account and preferences</p>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white">সেটিংস</h1>
+        <p className="text-sm text-gray-500 mt-0.5">আপনার অ্যাকাউন্ট এবং পছন্দ পরিচালনা করুন</p>
       </div>
 
       <div className="card overflow-hidden">
@@ -94,7 +94,7 @@ export default function SettingsPage() {
         ))}
       </div>
 
-      {/* Log out */}
+      {/* লগ আউট */}
       <div className="card overflow-hidden">
         <button
           onClick={handleLogout}
@@ -106,8 +106,8 @@ export default function SettingsPage() {
             <LogOut className="w-5 h-5 text-red-500" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-red-500">Log out</p>
-            <p className="text-xs text-gray-500 mt-0.5">Sign out of your account</p>
+            <p className="text-sm font-semibold text-red-500">লগ আউট</p>
+            <p className="text-xs text-gray-500 mt-0.5">আপনার অ্যাকাউন্ট থেকে বের হন</p>
           </div>
         </button>
       </div>
@@ -137,9 +137,9 @@ function PrivacySection({
     desc:  string;
     icon:  typeof Globe;
   }[] = [
-    { value: "public",  label: "Public",       desc: "Anyone can see your profile",         icon: Globe },
-    { value: "friends", label: "Friends only",  desc: "Only your friends can see your profile", icon: Users },
-    { value: "private", label: "Private",       desc: "Only you can see your profile",       icon: Lock  },
+    { value: "public",  label: "সবার জন্য",       desc: "যে কেউ আপনার প্রোফাইল দেখতে পাবে",         icon: Globe },
+    { value: "friends", label: "শুধু বন্ধুরা",  desc: "শুধু আপনার বন্ধুরা দেখতে পাবে", icon: Users },
+    { value: "private", label: "শুধু আমি",       desc: "শুধু আপনি নিজে দেখতে পাবেন",       icon: Lock  },
   ];
 
   async function save() {
@@ -147,9 +147,9 @@ function PrivacySection({
     try {
       await updateDoc(doc(db, "users", profile.uid), { privacySetting: privacy });
       setProfile({ ...profile, privacySetting: privacy });
-      toast.success("Privacy setting updated");
+      toast.success("গোপনীয়তা সেটিং আপডেট হয়েছে");
     } catch {
-      toast.error("Update failed. Please try again.");
+      toast.error("আপডেট ব্যর্থ হয়েছে");
     } finally {
       setSaving(false);
     }
@@ -210,11 +210,11 @@ function PasswordSection() {
 
   async function save() {
     if (!form.current || !form.next || !form.confirm)
-      return toast.error("Please fill in all fields");
+      return toast.error("সব তথ্য পূরণ করুন");
     if (form.next.length < 6)
-      return toast.error("New password must be at least 6 characters");
+      return toast.error("নতুন পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে");
     if (form.next !== form.confirm)
-      return toast.error("Passwords do not match");
+      return toast.error("পাসওয়ার্ড মিলছে না");
 
     setSaving(true);
     try {
@@ -223,10 +223,10 @@ function PasswordSection() {
       const cred = EmailAuthProvider.credential(user.email, form.current);
       await reauthenticateWithCredential(user, cred);
       await updatePassword(user, form.next);
-      toast.success("Password updated successfully");
+      toast.success("পাসওয়ার্ড সফলভাবে আপডেট হয়েছে");
       setForm({ current: "", next: "", confirm: "" });
     } catch {
-      toast.error("Current password is incorrect");
+      toast.error("বর্তমান পাসওয়ার্ড ভুল");
     } finally {
       setSaving(false);
     }
@@ -242,23 +242,23 @@ function PasswordSection() {
       </p>
       <div className="flex flex-col gap-4">
         <Input
-          label="Current password"
+          label="বর্তমান পাসওয়ার্ড"
           type="password"
-          placeholder="Enter current password"
+          placeholder="বর্তমান পাসওয়ার্ড দিন"
           value={form.current}
           onChange={set("current")}
         />
         <Input
-          label="New password"
+          label="নতুন পাসওয়ার্ড"
           type="password"
-          placeholder="At least 6 characters"
+          placeholder="কমপক্ষে ৬ অক্ষর"
           value={form.next}
           onChange={set("next")}
         />
         <Input
-          label="Confirm new password"
+          label="নতুন পাসওয়ার্ড নিশ্চিত করুন"
           type="password"
-          placeholder="Repeat new password"
+          placeholder="আবার নতুন পাসওয়ার্ড লিখুন"
           value={form.confirm}
           onChange={set("confirm")}
         />
@@ -273,10 +273,10 @@ function PasswordSection() {
 // ─── Notifications ────────────────────────────────────────────────────────────
 function NotifSection() {
   const rows = [
-    { label: "New friend requests",    desc: "When someone sends you a friend request" },
-    { label: "Friend request accepted",desc: "When someone accepts your request"       },
-    { label: "Post likes",             desc: "When someone likes your post"            },
-    { label: "Comments",               desc: "When someone comments on your post"      },
+    { label: "নতুন ফ্রেন্ড রিকুয়েস্ট",    desc: "কেউ ফ্রেন্ড রিকুয়েস্ট পাঠালে" },
+    { label: "ফ্রেন্ড রিকুয়েস্ট একসেপ্ট", desc: "কেউ আপনার রিকুয়েস্ট একসেপ্ট করলে" },
+    { label: "পোস্ট লাইক",               desc: "কেউ আপনার পোস্টে লাইক দিলে" },
+    { label: "মন্তব্য",                   desc: "কেউ আপনার পোস্টে মন্তব্য করলে" },
     { label: "Mentions",               desc: "When someone mentions you in a post"     },
     { label: "Messages",               desc: "When you receive a new message"          },
   ];

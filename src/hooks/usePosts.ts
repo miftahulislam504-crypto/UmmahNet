@@ -12,6 +12,7 @@ import {
   deleteComment,
   subscribeToComments,
   getPublicFeed,
+  getFriendFeed,
   getUserPosts,
 } from "@/services/postService";
 import { useAuthStore } from "@/store/authStore";
@@ -21,25 +22,36 @@ import toast from "react-hot-toast";
 type FeedPageParam = QueryDocumentSnapshot | undefined;
 
 // ─── Feed with infinite scroll ────────────────────────────────────────────────
+// BUG 3 FIX: was calling getPublicFeed() which returned ALL public posts from
+// every user on the platform. Changed to getFriendFeed() which only returns
+// posts from friends + the current user's own posts.
 export function useFeed() {
+  const { user } = useAuthStore();
+
   return useInfiniteQuery<
-    Awaited<ReturnType<typeof getPublicFeed>>,
+    Awaited<ReturnType<typeof getFriendFeed>>,
     Error,
-    { pages: Awaited<ReturnType<typeof getPublicFeed>>[]; pageParams: FeedPageParam[] },
+    { pages: Awaited<ReturnType<typeof getFriendFeed>>[]; pageParams: FeedPageParam[] },
     string[],
     FeedPageParam
   >({
-    queryKey:           ["feed"],
-    queryFn:            async ({ pageParam }) => {
-      return await getPublicFeed(pageParam);
-    },
-    initialPageParam:   undefined as FeedPageParam,
-    getNextPageParam:   (lastPage) => lastPage.lastDoc ?? undefined,
+    queryKey:         ["feed", user?.uid ?? ""],
+    queryFn:          async ({ pageParam }) => getFriendFeed(user!.uid, pageParam),
+    initialPageParam: undefined as FeedPageParam,
+    getNextPageParam: (lastPage) => lastPage.lastDoc ?? undefined,
+    enabled:          !!user,
   });
 }
 
 // ─── User posts ───────────────────────────────────────────────────────────────
-export function useUserPosts(uid?: string) {
+// PHASE 6: `viewerRelation` determines which visibilities are included —
+// see getUserPosts() in postService.ts. Included in the query key so the
+// owner's own view (all posts) and a stranger's view (public only) never
+// share a cache entry.
+export function useUserPosts(
+  uid?: string,
+  viewerRelation: "owner" | "friend" | "stranger" = "stranger"
+) {
   return useInfiniteQuery<
     Awaited<ReturnType<typeof getUserPosts>>,
     Error,
@@ -47,9 +59,9 @@ export function useUserPosts(uid?: string) {
     (string | undefined)[],
     FeedPageParam
   >({
-    queryKey:         ["userPosts", uid],
+    queryKey:         ["userPosts", uid, viewerRelation],
     queryFn:          async ({ pageParam }) =>
-      getUserPosts(uid!, pageParam),
+      getUserPosts(uid!, pageParam, viewerRelation),
     initialPageParam: undefined as FeedPageParam,
     getNextPageParam: (lastPage) => lastPage.lastDoc ?? undefined,
     enabled:          !!uid,

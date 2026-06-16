@@ -19,6 +19,7 @@ import {
 import { db } from "@/lib/firebase/config";
 import type { Conversation, Message, UserPresence } from "@/types";
 import { createNotification } from "@/services/notificationService";
+import { uploadCompressedImage, COMPRESS_PRESETS, randomId } from "@/lib/firebase/storage";
 
 // ─── Get or create private conversation ──────────────────────────────────────
 export async function getOrCreateConversation(
@@ -53,20 +54,29 @@ export async function getOrCreateConversation(
 }
 
 // ─── Send message ─────────────────────────────────────────────────────────────
+// PHASE 7 FIX: chat images used to be read via FileReader.readAsDataURL()
+// and stored as full Base64 strings directly inside each Firestore message
+// document. Because the 1MB document limit applies per document and a single
+// photo can easily be 200–800 KB as Base64, sending a photo would silently
+// fail (or create an oversized document that Firestore rejects). Now the
+// image is compressed client-side and uploaded to Firebase Storage at
+// chat/images/{conversationId}/{msgId}.jpg; only the small download URL is
+// written to the message document.
 export async function sendMessage(
   conversationId: string,
   senderId:       string,
   text:           string,
   imageFile?:     File
 ): Promise<void> {
+  const msgId = randomId();
   let mediaUrl = "";
+
   if (imageFile) {
-    mediaUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload  = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(imageFile);
-    });
+    mediaUrl = await uploadCompressedImage(
+      `chat/images/${conversationId}/${msgId}.jpg`,
+      imageFile,
+      COMPRESS_PRESETS.chat
+    );
   }
 
   // Fetch conversation to get the other participant's UID

@@ -32,14 +32,14 @@ function LoginForm() {
     handleGoogleRedirectResult()
       .then(async (user) => {
         if (user) {
-          toast.success("Welcome!");
+          toast.success("স্বাগতম!");
           // BUG FIX: a cookie-detection failure must not strand the user on
           // /login after Firebase Auth already succeeded.
           await waitForSessionCookie().catch(() => {});
           router.push(from);
         }
       })
-      .catch(() => toast.error("Google sign-in failed"))
+      .catch(() => toast.error("গুগল লগইন ব্যর্থ হয়েছে"))
       .finally(() => setGLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -49,12 +49,12 @@ function LoginForm() {
   // so middleware found no session and bounced back to /login.
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.email || !form.password) return toast.error("Please fill in all fields");
+    if (!form.email || !form.password) return toast.error("সব তথ্য পূরণ করুন");
 
     setLoading(true);
     try {
       await loginWithEmail(form.email, form.password);
-      toast.success("Welcome back! Login successful");
+      toast.success("স্বাগত ফিরে! লগইন সফল হয়েছে");
       // BUG FIX: previously a cookie-detection timeout would throw here,
       // get caught below, show "Login failed", and never call router.push —
       // even though signInWithEmailAndPassword had already succeeded.
@@ -63,8 +63,8 @@ function LoginForm() {
     } catch (err: any) {
       const msg =
         err.code === "auth/invalid-credential"
-          ? "Incorrect email or password"
-          : "Login failed";
+          ? "ইমেইল বা পাসওয়ার্ড ভুল"
+          : "লগইন ব্যর্থ হয়েছে";
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -79,14 +79,14 @@ function LoginForm() {
       await loginWithGoogle();
 
       // Desktop popup success lands here
-      toast.success("Welcome!");
+      toast.success("স্বাগতম!");
       await waitForSessionCookie().catch(() => {});
       router.push(from);
     } catch (err: any) {
       // On mobile redirect, no error is thrown — the page just navigates away.
       // If the popup was closed, auth/popup-closed-by-user is thrown.
       if (err?.code !== "auth/popup-closed-by-user") {
-        toast.error("Google sign-in failed");
+        toast.error("গুগল লগইন ব্যর্থ হয়েছে");
       }
       setGLoading(false);
     }
@@ -94,12 +94,12 @@ function LoginForm() {
   }
   return (
     <>
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Welcome back!</h2>
-      <p className="text-sm text-gray-500 mb-6">Log in to your account</p>
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">ফিরে আসুন!</h2>
+      <p className="text-sm text-gray-500 mb-6">আপনার অ্যাকাউন্টে লগইন করুন</p>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <Input
-          label="Email"
+          label="ইমেইল"
           type="email"
           placeholder="name@email.com"
           leftIcon={<Mail className="w-4 h-4" />}
@@ -107,7 +107,7 @@ function LoginForm() {
           onChange={(e) => setForm({ ...form, email: e.target.value })}
         />
         <Input
-          label="Password"
+          label="পাসওয়ার্ড"
           type="password"
           placeholder="••••••••"
           leftIcon={<Lock className="w-4 h-4" />}
@@ -117,7 +117,7 @@ function LoginForm() {
 
         <div className="flex justify-end">
           <Link href="/forgot-password" className="text-xs text-primary-600 hover:underline">
-            Forgot password?
+            পাসওয়ার্ড ভুলে গেছেন?
           </Link>
         </div>
 
@@ -141,7 +141,7 @@ function LoginForm() {
                    disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {gLoading ? (
-          <span className="text-gray-500">Loading...</span>
+          <span className="text-gray-500">লোড হচ্ছে...</span>
         ) : (
           <>
             <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -150,15 +150,15 @@ function LoginForm() {
               <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
               <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
             </svg>
-            Continue with Google
+            গুগল দিয়ে চালিয়ে যান
           </>
         )}
       </button>
 
       <p className="text-center text-sm text-gray-500 mt-6">
-        New here?{" "}
+        নতুন এখানে?{" "}
         <Link href="/register" className="text-primary-600 font-semibold hover:underline">
-          Create an account
+          অ্যাকাউন্ট তৈরি করুন
         </Link>
       </p>
     </>
@@ -170,7 +170,7 @@ export default function LoginPage() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center py-10">
-        <span className="text-gray-400 text-sm">Loading...</span>
+        <span className="text-gray-400 text-sm">লোড হচ্ছে...</span>
       </div>
     }>
       <LoginForm />

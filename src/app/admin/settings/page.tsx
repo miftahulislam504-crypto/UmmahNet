@@ -22,10 +22,10 @@ export default function AdminSettingsPage() {
         grantedBy: user?.uid,
         grantedAt: new Date(),
       });
-      toast.success("Admin access granted");
+      toast.success("অ্যাডমিন অ্যাক্সেস দেওয়া হয়েছে");
       setUid("");
     } catch {
-      toast.error("Action failed");
+      toast.error("কাজটি ব্যর্থ হয়েছে");
     } finally {
       setLoading(false);
     }
@@ -36,10 +36,10 @@ export default function AdminSettingsPage() {
     setLoading(true);
     try {
       await deleteDoc(doc(db, "admins", uid.trim()));
-      toast.success("Admin access revoked");
+      toast.success("অ্যাডমিন অ্যাক্সেস বাতিল করা হয়েছে");
       setUid("");
     } catch {
-      toast.error("Action failed");
+      toast.error("কাজটি ব্যর্থ হয়েছে");
     } finally {
       setLoading(false);
     }
@@ -48,20 +48,20 @@ export default function AdminSettingsPage() {
   return (
     <div className="flex flex-col gap-6 max-w-xl">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Settings</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">অ্যাডমিন সেটিংস</h1>
       </div>
 
       {/* Admin management */}
       <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
-        <h2 className="font-bold text-gray-900 dark:text-white mb-1">Manage Admin Access</h2>
+        <h2 className="font-bold text-gray-900 dark:text-white mb-1">অ্যাডমিন অ্যাক্সেস পরিচালনা</h2>
         <p className="text-sm text-gray-500 mb-5">
           Grant or revoke admin access for another user by their Firebase UID.
         </p>
 
         <div className="flex flex-col gap-4">
           <Input
-            label="User's Firebase UID"
-            placeholder="Enter UID here..."
+            label="ইউজারের Firebase UID"
+            placeholder="এখানে UID দিন..."
             value={uid}
             onChange={(e) => setUid(e.target.value)}
           />
@@ -95,7 +95,7 @@ export default function AdminSettingsPage() {
 
       {/* Firestore admins collection setup */}
       <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
-        <h2 className="font-bold text-gray-900 dark:text-white mb-2">First-time Setup</h2>
+        <h2 className="font-bold text-gray-900 dark:text-white mb-2">প্রথমবার সেটআপ</h2>
         <p className="text-sm text-gray-500 mb-4">
           To create the first Admin, go to Firebase Console → Firestore, then create a document in the <code className="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-xs">admins</code> collection using your UID.
         </p>

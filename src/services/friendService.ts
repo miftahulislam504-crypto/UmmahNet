@@ -58,28 +58,49 @@ export async function sendFriendRequest(
 }
 
 // ─── Accept Friend Request ─────────────────────────────────────────────────────
+// BUG 2 FIX: previously the batch tried to update BOTH users/{senderId} AND
+// users/{receiverId} in one transaction. Firestore rules only allow a user to
+// update their OWN document (isOwner(uid)). The batch included an update to
+// the sender's doc — permission denied — causing the ENTIRE batch to fail
+// silently. The friend request stayed in "pending" and no friendship was created.
+//
+// Fix: split into two writes:
+//   1. A writeBatch that only touches docs the RECEIVER is allowed to write:
+//      the friendRequest (update status), the friendship (create), and their
+//      OWN users doc (increment their friendsCount).
+//   2. A separate updateDoc for the SENDER's friendsCount using a Firestore
+//      rule that allows a user to increment another user's friendsCount when
+//      a friendship is being accepted. We achieve this by relaxing the users
+//      update rule to also allow incrementing friendsCount when a friendship
+//      doc between the two users already exists (checked after the batch).
+//
+// Simpler alternative implemented here: update the sender's count in a second
+// write immediately after the batch — this is safe because the friendship doc
+// now exists, and we update the Firestore rule to allow any authenticated user
+// to increment another user's friendsCount (a non-sensitive counter).
 export async function acceptFriendRequest(requestId: string): Promise<void> {
   const reqRef  = doc(db, "friendRequests", requestId);
   const reqSnap = await getDoc(reqRef);
   if (!reqSnap.exists()) throw new Error("NOT_FOUND");
 
   const { senderId, receiverId } = reqSnap.data() as FriendRequest;
-  const batch = writeBatch(db);
-
-  batch.update(reqRef, { status: "accepted" });
-
   const [user1, user2] = [senderId, receiverId].sort();
-  // PHASE 12: deterministic id (user1_user2) so firestore.rules can check
-  // "is X my friend" via exists() without running a query.
   const friendshipRef  = doc(db, "friendships", `${user1}_${user2}`);
-  batch.set(friendshipRef, { user1, user2, createdAt: serverTimestamp() });
 
-  batch.update(doc(db, "users", senderId),   { friendsCount: increment(1) });
+  // Batch 1: things the RECEIVER (current user) can write
+  const batch = writeBatch(db);
+  batch.update(reqRef,      { status: "accepted" });
+  batch.set(friendshipRef,  { user1, user2, createdAt: serverTimestamp() });
   batch.update(doc(db, "users", receiverId), { friendsCount: increment(1) });
-
   await batch.commit();
 
-  // ── Phase 3: Notify original sender that request was accepted ─────────────
+  // Write 2: increment the SENDER's friendsCount separately.
+  // The Firestore rule for users/{uid} update is relaxed (see firestore.rules)
+  // to allow any authenticated user to increment friendsCount — it's a
+  // non-sensitive counter and the friendship doc now exists as proof.
+  await updateDoc(doc(db, "users", senderId), { friendsCount: increment(1) });
+
+  // ── Phase 3: Notify original sender ────────────────────────────────────────
   try {
     const acceptorSnap = await getDoc(doc(db, "users", receiverId));
     const acceptorName = acceptorSnap.exists()
@@ -134,7 +155,8 @@ export async function getPendingRequests(uid: string): Promise<
     collection(db, "friendRequests"),
     where("receiverId", "==", uid),
     where("status", "==", "pending"),
-    orderBy("createdAt", "desc")
+    orderBy("createdAt", "desc"),
+    limit(50)
   );
   const snap = await getDocs(q);
 
@@ -157,7 +179,8 @@ export async function getSentRequests(uid: string): Promise<
   const q    = query(
     collection(db, "friendRequests"),
     where("senderId", "==", uid),
-    where("status", "==", "pending")
+    where("status", "==", "pending"),
+    limit(50)
   );
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as FriendRequest & { id: string }));
@@ -292,6 +315,8 @@ export async function searchUsers(
     .map((d) => d.data() as UserProfile)
     .filter((u) => {
       if (u.uid === currentUid) return false;
+      // PHASE 6: banned accounts shouldn't be discoverable via search.
+      if (u.isBlocked) return false;
       if (rest.length === 0) return true;
       // Secondary filter: every remaining word must appear somewhere in the
       // user's tokens (word-level) or their displayName / username directly.

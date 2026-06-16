@@ -14,6 +14,7 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
+import { uploadCompressedImage, uploadAndGetURL, COMPRESS_PRESETS, randomId } from "@/lib/firebase/storage";
 
 export interface Story {
   id:          string;
@@ -36,30 +37,14 @@ export interface StoryGroup {
   hasUnviewed: boolean;
 }
 
-// ─── Image → Base64 (max 900px, quality 0.82) ───────────────────────────────
-// NOTE: Video is NOT supported — Firestore has a 1MB document limit.
-// Storing video as base64 always exceeds that limit and causes story upload to fail.
-// Only images are accepted; the UI hides the video option accordingly.
-async function imageToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new window.Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      const MAX = 900;
-      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
-      const canvas = document.createElement("canvas");
-      canvas.width  = img.width  * scale;
-      canvas.height = img.height * scale;
-      canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
-      URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL("image/jpeg", 0.82));
-    };
-    img.onerror = reject;
-    img.src = url;
-  });
-}
-
 // ─── Create story ─────────────────────────────────────────────────────────────
+// PHASE 7 FIX: previously images were converted to Base64 and stored inline
+// in the Firestore story document. A single photo easily hit 300–600 KB
+// inside the document, and video was outright blocked because it would
+// always exceed Firestore's 1MB-per-document limit.
+// Now we upload to Firebase Storage (stories/{authorId}/{id}.jpg or .mp4)
+// and store only the small download URL in Firestore — video is now fully
+// supported too.
 export async function createStory(
   authorId:    string,
   authorName:  string,
@@ -67,19 +52,27 @@ export async function createStory(
   file:        File,
   caption:     string
 ): Promise<void> {
-  if (file.type.startsWith("video/")) {
-    throw new Error("Video stories are not supported yet. Please upload an image.");
+  const id        = randomId();
+  const isVideo   = file.type.startsWith("video/");
+  const ext       = isVideo ? "mp4" : "jpg";
+  const path      = `stories/${authorId}/${id}.${ext}`;
+
+  let mediaUrl: string;
+  if (isVideo) {
+    // Videos go straight to Storage — no client-side compression.
+    mediaUrl = await uploadAndGetURL(path, file, file.type);
+  } else {
+    mediaUrl = await uploadCompressedImage(path, file, COMPRESS_PRESETS.story);
   }
-  const mediaUrl = await imageToBase64(file);
 
   const expiresAt = Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000));
 
   await addDoc(collection(db, "stories"), {
     authorId,
     authorName,
-    authorPhoto:   authorPhoto ?? "",
+    authorPhoto: authorPhoto ?? "",
     mediaUrl,
-    type:      "image",
+    type:      isVideo ? "video" : "image",
     caption:   caption.trim(),
     viewerIds: [],
     expiresAt,

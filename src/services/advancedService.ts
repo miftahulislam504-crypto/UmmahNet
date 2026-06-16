@@ -13,6 +13,7 @@ import {
   limit,
   serverTimestamp,
   writeBatch,
+  increment,
   onSnapshot,
   type Unsubscribe,
 } from "firebase/firestore";
@@ -58,6 +59,15 @@ export async function reportContent(data: {
 }
 
 // ─── Block / Unblock user ─────────────────────────────────────────────────────
+// PHASE 6 FIX: previously this only wrote/deleted a `blocks/{me}_{them}` doc
+// with no other effect — blocking someone did nothing visible. Now, on
+// BLOCK we also:
+//   1. delete any existing friendship between the two users
+//      (and decrement both friendsCount values), and
+//   2. cancel any pending friend request in either direction,
+// so a block actually severs the connection instead of just hiding it.
+// Unblock only removes the block doc — it does NOT restore the friendship
+// or resend requests (the relationship has to be re-established manually).
 export async function toggleBlock(myUid: string, theirUid: string): Promise<boolean> {
   const blockRef = doc(db, "blocks", `${myUid}_${theirUid}`);
   const snap     = await getDoc(blockRef);
@@ -65,13 +75,65 @@ export async function toggleBlock(myUid: string, theirUid: string): Promise<bool
     await deleteDoc(blockRef);
     return false; // unblocked
   }
-  await setDoc(blockRef, { blockerId: myUid, blockedId: theirUid, createdAt: serverTimestamp() });
+
+  const [user1, user2]  = [myUid, theirUid].sort();
+  const friendshipRef   = doc(db, "friendships", `${user1}_${user2}`);
+  const [friendshipSnap, sentReqSnap, recvReqSnap] = await Promise.all([
+    getDoc(friendshipRef),
+    getDocs(query(
+      collection(db, "friendRequests"),
+      where("senderId",   "==", myUid),
+      where("receiverId", "==", theirUid),
+      where("status",     "==", "pending")
+    )),
+    getDocs(query(
+      collection(db, "friendRequests"),
+      where("senderId",   "==", theirUid),
+      where("receiverId", "==", myUid),
+      where("status",     "==", "pending")
+    )),
+  ]);
+
+  const batch = writeBatch(db);
+  batch.set(blockRef, { blockerId: myUid, blockedId: theirUid, createdAt: serverTimestamp() });
+
+  if (friendshipSnap.exists()) {
+    batch.delete(friendshipRef);
+    batch.update(doc(db, "users", myUid),    { friendsCount: increment(-1) });
+    batch.update(doc(db, "users", theirUid), { friendsCount: increment(-1) });
+  }
+  sentReqSnap.docs.forEach((d) => batch.delete(d.ref));
+  recvReqSnap.docs.forEach((d) => batch.delete(d.ref));
+
+  await batch.commit();
   return true; // blocked
 }
 
 export async function isBlocked(myUid: string, theirUid: string): Promise<boolean> {
   const snap = await getDoc(doc(db, "blocks", `${myUid}_${theirUid}`));
   return snap.exists();
+}
+
+// ─── Phase 6: hidden relations (for feed/search/profile content-hiding) ──────
+// Returns both directions of block relationships involving `uid`:
+//   blockedByMe — uids that `uid` has blocked (can be unblocked from settings)
+//   blockedMe   — uids that have blocked `uid` (their content should also hide)
+// Used to build a combined "hidden" set client-side — no Firestore `not-in`
+// query is needed, and the set is normally tiny.
+export interface HiddenRelations {
+  blockedByMe: string[];
+  blockedMe:   string[];
+}
+
+export async function getHiddenRelations(uid: string): Promise<HiddenRelations> {
+  const [mineSnap, theirsSnap] = await Promise.all([
+    getDocs(query(collection(db, "blocks"), where("blockerId", "==", uid))),
+    getDocs(query(collection(db, "blocks"), where("blockedId", "==", uid))),
+  ]);
+  return {
+    blockedByMe: mineSnap.docs.map((d) => d.data().blockedId as string),
+    blockedMe:   theirsSnap.docs.map((d) => d.data().blockerId as string),
+  };
 }
 
 // ─── Follow / Unfollow (for public pages) ────────────────────────────────────

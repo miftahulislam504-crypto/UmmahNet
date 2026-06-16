@@ -58,7 +58,7 @@ function SearchContent() {
           <input
             autoFocus
             type="text"
-            placeholder="Search people, posts..."
+            placeholder="মানুষ বা পোস্ট খুঁজুন..."
             value={query}
             onChange={handleChange}
             className="w-full bg-gray-100 dark:bg-gray-800 rounded-xl pl-11 pr-4 py-3
@@ -75,7 +75,7 @@ function SearchContent() {
       {results.length > 0 && (
         <div className="flex flex-col gap-3">
           <p className="text-sm font-medium text-gray-600 dark:text-gray-400 px-1">
-            People — {results.length}  found
+            মানুষ — {results.length} জন পাওয়া গেছে
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {results.map((u) => (
@@ -95,7 +95,7 @@ function SearchContent() {
         <div className="card p-12 text-center">
           <Users className="w-8 h-8 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500 text-sm">
-            "<span className="font-medium">{query}</span>" " not found
+            "<span className="font-medium">{query}</span>" পাওয়া যায়নি
           </p>
         </div>
       )}
@@ -103,7 +103,7 @@ function SearchContent() {
       {!query.trim() && (
         <div className="card p-12 text-center">
           <Search className="w-10 h-10 text-gray-200 mx-auto mb-4" />
-          <p className="text-gray-500 text-sm">Type to search</p>
+          <p className="text-gray-500 text-sm">খুঁজতে টাইপ করুন</p>
         </div>
       )}
     </div>
@@ -112,7 +112,7 @@ function SearchContent() {
 
 export default function SearchPage() {
   return (
-    <Suspense fallback={<div className="card p-8 text-center text-gray-500">Loading...</div>}>
+    <Suspense fallback={<div className="card p-8 text-center text-gray-500">লোড হচ্ছে...</div>}>
       <SearchContent />
     </Suspense>
   );

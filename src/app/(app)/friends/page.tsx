@@ -18,15 +18,15 @@ export default function FriendsPage() {
   const { data: friendsData }     = useFriends(user?.uid);
 
   const tabs = [
-    { id: "requests" as Tab, label: "Requests", icon: UserPlus, count: pending?.length },
-    { id: "friends"  as Tab, label: "Friends",  icon: Users },
-    { id: "find"     as Tab, label: "Find people", icon: Search },
+    { id: "requests" as Tab, label: "রিকুয়েস্ট", icon: UserPlus, count: pending?.length },
+    { id: "friends"  as Tab, label: "বন্ধু",      icon: Users },
+    { id: "find"     as Tab, label: "মানুষ খুঁজুন", icon: Search },
   ];
 
   return (
     <div className="flex flex-col gap-4">
       <div className="card p-4">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Friends</h1>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-4">বন্ধু</h1>
         <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
           {tabs.map(({ id, label, icon: Icon, count }) => (
             <button
@@ -55,7 +55,7 @@ export default function FriendsPage() {
       {activeTab === "requests" && (
         <div className="flex flex-col gap-3">
           {!pending || pending.length === 0 ? (
-            <EmptyState icon={<UserPlus className="w-8 h-8 text-primary-400" />} title="No friend requests" desc="New requests will appear here" />
+            <EmptyState icon={<UserPlus className="w-8 h-8 text-primary-400" />} title="কোনো ফ্রেন্ড রিকুয়েস্ট নেই" desc="নতুন রিকুয়েস্ট এখানে দেখাবে" />
           ) : (
             <>
               <p className="text-sm text-gray-500 px-1">{pending.length} request{pending.length !== 1 ? "s" : ""}</p>
@@ -68,7 +68,7 @@ export default function FriendsPage() {
       {activeTab === "friends" && (
         <div className="flex flex-col gap-3">
           {!friendsData || friendsData.friends.length === 0 ? (
-            <EmptyState icon={<Users className="w-8 h-8 text-primary-400" />} title="No friends yet" desc="Use 'Find people' to connect with others" />
+            <EmptyState icon={<Users className="w-8 h-8 text-primary-400" />} title="এখনো কোনো বন্ধু নেই" desc="'মানুষ খুঁজুন' ট্যাবে গিয়ে বন্ধু যোগ করুন" />
           ) : (
             <>
               <p className="text-sm text-gray-500 px-1">{friendsData.friends.length} friend{friendsData.friends.length !== 1 ? "s" : ""}</p>

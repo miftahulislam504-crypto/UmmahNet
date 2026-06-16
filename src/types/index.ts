@@ -31,6 +31,10 @@ export interface Post {
   commentsCount: number;
   sharesCount:   number;
   visibility:    "public" | "friends" | "private";
+  // Phase 6 — denormalized from users/{authorId}.isBlocked so the feed can
+  // hide a banned user's posts without an extra read per post. Kept in sync
+  // by adminService.setBanStatus().
+  authorBanned?: boolean;
   createdAt:     Timestamp;
 }
 

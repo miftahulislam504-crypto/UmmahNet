@@ -12,27 +12,8 @@ import { Avatar }  from "@/components/ui/Avatar";
 import { Input }   from "@/components/ui/Input";
 import { Button }  from "@/components/ui/Button";
 import { buildSearchTokens } from "@/lib/utils";
+import { uploadCompressedImage, COMPRESS_PRESETS } from "@/lib/firebase/storage";
 import toast from "react-hot-toast";
-
-// Image → Base64 (max 500px, quality 0.8)
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new window.Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      const MAX   = 500;
-      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
-      const canvas = document.createElement("canvas");
-      canvas.width  = img.width  * scale;
-      canvas.height = img.height * scale;
-      canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
-      URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL("image/jpeg", 0.8));
-    };
-    img.onerror = reject;
-    img.src = url;
-  });
-}
 
 export default function EditProfilePage() {
   const router              = useRouter();
@@ -61,21 +42,31 @@ export default function EditProfilePage() {
 
   async function handleSave() {
     if (!profile) return;
-    if (!form.displayName.trim()) return toast.error("Name cannot be empty");
+    if (!form.displayName.trim()) return toast.error("নাম খালি রাখা যাবে না");
     setLoading(true);
 
     try {
       let photoURL = profile.photoURL ?? "";
 
+      // PHASE 7 FIX: avatar was compressed client-side then stored as a long
+      // Base64 data URL in users/{uid}.photoURL. A 500px avatar at 0.8
+      // quality is still ~80–150 KB of Base64 inside the user document — and
+      // every friend-list, chat, post-card, and search result read that whole
+      // document just to show a tiny avatar circle. Now we upload the
+      // compressed Blob to Storage at avatars/{uid} and write only the small
+      // https URL to Firestore (and to the Firebase Auth profile).
       if (avatarFile) {
-        photoURL = await fileToBase64(avatarFile);
+        photoURL = await uploadCompressedImage(
+          `avatars/${profile.uid}`,
+          avatarFile,
+          COMPRESS_PRESETS.avatar
+        );
       }
 
       if (auth.currentUser) {
-        const isBase64 = photoURL.startsWith("data:");
         await updateProfile(auth.currentUser, {
           displayName: form.displayName,
-          ...(!isBase64 ? { photoURL } : {}),
+          photoURL,
         });
       }
 
@@ -84,16 +75,16 @@ export default function EditProfilePage() {
         username:     form.username.trim(),
         bio:          form.bio.trim(),
         photoURL,
-        searchTokens: buildSearchTokens(form.displayName.trim(), form.username.trim()), // Phase 4
+        searchTokens: buildSearchTokens(form.displayName.trim(), form.username.trim()),
       };
 
       await updateDoc(doc(db, "users", profile.uid), updates);
       setProfile({ ...profile, ...updates });
-      toast.success("Profile updated!");
+      toast.success("প্রোফাইল আপডেট হয়েছে!");
       router.back();
     } catch (err) {
       console.error(err);
-      toast.error("Update failed. Please try again.");
+      toast.error("আপডেট ব্যর্থ হয়েছে, আবার চেষ্টা করুন");
     } finally {
       setLoading(false);
     }
@@ -116,7 +107,7 @@ export default function EditProfilePage() {
         >
           <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-300" />
         </button>
-        <h1 className="text-base font-bold text-gray-900 dark:text-white">Edit Profile</h1>
+        <h1 className="text-base font-bold text-gray-900 dark:text-white">প্রোফাইল সম্পাদনা</h1>
         <Button size="sm" loading={loading} onClick={handleSave}>
           Save
         </Button>
@@ -165,7 +156,7 @@ export default function EditProfilePage() {
             onClick={() => fileRef.current?.click()}
             className="text-sm font-medium text-primary-600 hover:text-primary-700"
           >
-            Change photo
+            ছবি পরিবর্তন করুন
           </button>
 
           {avatarFile && (
@@ -178,24 +169,24 @@ export default function EditProfilePage() {
         {/* Form fields */}
         <div className="card p-4 flex flex-col gap-4">
           <Input
-            label="Full name"
-            placeholder="Your name"
+            label="পুরো নাম"
+            placeholder="আপনার নাম"
             value={form.displayName}
             onChange={set("displayName")}
           />
           <Input
-            label="Username"
+            label="ইউজারনেম"
             placeholder="@username"
             value={form.username}
             onChange={set("username")}
           />
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Bio</label>
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">বায়ো</label>
             <textarea
               value={form.bio}
               onChange={set("bio")}
               rows={4}
-              placeholder="Tell people a little about yourself..."
+              placeholder="নিজের সম্পর্কে কিছু লিখুন..."
               className="w-full bg-gray-100 dark:bg-gray-800 border border-transparent
                          focus:border-primary-500 focus:bg-white dark:focus:bg-gray-900
                          rounded-xl px-4 py-2.5 text-sm outline-none transition-all

@@ -6,12 +6,13 @@ import Image  from "next/image";
 import {
   Heart, MessageCircle, Send, Bookmark,
   MoreHorizontal, Trash2, Globe, Users, Lock, Flag,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, UserX, UserCheck,
 } from "lucide-react";
 import { Avatar }         from "@/components/ui/Avatar";
 import { ReportModal }    from "@/components/ui/ReportModal";
 import { CommentSection } from "@/components/feed/CommentSection";
 import { useLike, useDeletePost } from "@/hooks/usePosts";
+import { useHiddenUsers, useToggleBlock } from "@/hooks/useBlocks";
 import { useAuthStore }   from "@/store/authStore";
 import { toggleSavePost, isPostSaved, renderWithHashtags } from "@/services/advancedService";
 import { formatDate, cn } from "@/lib/utils";
@@ -28,6 +29,9 @@ export function PostCard({ post }: Props) {
   const router                   = useRouter();
   const { liked, count, toggle } = useLike(post.id, post.likesCount);
   const deletePost               = useDeletePost();
+  const { blockedByMe }          = useHiddenUsers();
+  const toggleBlock              = useToggleBlock(post.authorId);
+  const isBlockedByMe            = blockedByMe.has(post.authorId);
 
   const [showComments, setShowComments] = useState(false);
   const [showMenu,     setShowMenu]     = useState(false);
@@ -126,7 +130,7 @@ export function PostCard({ post }: Props) {
                                hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                   >
                     <Bookmark className={cn("w-4 h-4", saved && "fill-current text-primary-600")} />
-                    {saved ? "Remove from saved" : "Save post"}
+                    {saved ? "সেভ থেকে সরান" : "পোস্ট সেভ করুন"}
                   </button>
                   {!isOwner && (
                     <button
@@ -135,6 +139,22 @@ export function PostCard({ post }: Props) {
                                  text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                     >
                       <Flag className="w-4 h-4" /> Report
+                    </button>
+                  )}
+                  {/* PHASE 6: Block/Unblock the post's author. Blocking also
+                      removes any friendship + pending requests and hides
+                      their posts from your feed/search (and vice-versa). */}
+                  {!isOwner && (
+                    <button
+                      onClick={() => { toggleBlock.mutate(); setShowMenu(false); }}
+                      disabled={toggleBlock.isPending}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm
+                                 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    >
+                      {isBlockedByMe
+                        ? <UserCheck className="w-4 h-4" />
+                        : <UserX className="w-4 h-4" />}
+                      {isBlockedByMe ? "আনব্লক" : "ব্লক"} {post.authorName.split(" ")[0]}
                     </button>
                   )}
                   {isOwner && (

@@ -2,31 +2,34 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // Avatars — owner only
+    // Avatars — owner only (max 5 MB, image only)
     match /avatars/{uid} {
       allow read:  if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == uid
-                   && request.resource.size < 5 * 1024 * 1024 // 5MB
+                   && request.resource.size < 5 * 1024 * 1024
                    && request.resource.contentType.matches('image/.*');
     }
 
-    // Cover photos
+    // Cover photos — owner only (max 10 MB, image only)
     match /covers/{uid} {
       allow read:  if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == uid
-                   && request.resource.size < 10 * 1024 * 1024 // 10MB
+                   && request.resource.size < 10 * 1024 * 1024
                    && request.resource.contentType.matches('image/.*');
     }
 
-    // Post images
-    match /posts/images/{postId} {
+    // Post images — PHASE 7 FIX: pattern changed from /posts/images/{postId}
+    // to /posts/images/{fileName} so that filenames like `postId_0.jpg`,
+    // `postId_1.jpg` etc. all match the single wildcard segment.
+    match /posts/images/{fileName} {
       allow read:  if request.auth != null;
       allow write: if request.auth != null
                    && request.resource.size < 10 * 1024 * 1024
                    && request.resource.contentType.matches('image/.*');
     }
 
-    // Chat images
+    // Chat images — any participant can write; anyone authenticated can read.
+    // (Phase 7 — size limit 10 MB, images only; videos go via stories)
     match /chat/images/{convId}/{fileName} {
       allow read:  if request.auth != null;
       allow write: if request.auth != null
@@ -34,11 +37,11 @@ service firebase.storage {
                    && request.resource.contentType.matches('image/.*');
     }
 
-    // Stories
+    // Stories — owner can write images + videos (max 50 MB for video)
     match /stories/{uid}/{storyId} {
       allow read:  if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == uid
-                   && request.resource.size < 50 * 1024 * 1024 // 50MB
+                   && request.resource.size < 50 * 1024 * 1024
                    && (request.resource.contentType.matches('image/.*') ||
                        request.resource.contentType.matches('video/.*'));
     }

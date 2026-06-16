@@ -105,7 +105,7 @@ export function ConversationList({ convs, loading, activeId, onSelect }: Props) 
                       ? "font-bold text-gray-900 dark:text-white"
                       : "font-semibold text-gray-900 dark:text-white"
                   )}>
-                    {other?.displayName ?? "Unknown"}
+                    {other?.displayName ?? "অজানা"}
                   </p>
                   <span className="text-xs text-gray-400 flex-shrink-0">
                     {formatDate(updatedAt)}

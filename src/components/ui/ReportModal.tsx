@@ -9,13 +9,13 @@ import { cn }       from "@/lib/utils";
 import toast        from "react-hot-toast";
 
 const REASONS = [
-  "Spam or advertising",
-  "False information",
-  "Harassment or bullying",
-  "Hate speech",
-  "Sexual or explicit content",
-  "Violence",
-  "Other",
+  "স্প্যাম বা বিজ্ঞাপন",
+  "ভুল তথ্য",
+  "হয়রানি বা বুলিং",
+  "ঘৃণামূলক বক্তব্য",
+  "যৌন বা অশ্লীল কন্টেন্ট",
+  "সহিংসতা",
+  "অন্যান্য",
 ];
 
 interface Props {
@@ -34,10 +34,10 @@ export function ReportModal({ targetId, targetType, onClose }: Props) {
     setLoading(true);
     try {
       await reportContent({ reporterId: user.uid, targetId, targetType, reason });
-      toast.success("Report submitted. Thank you.");
+      toast.success("রিপোর্ট জমা দেওয়া হয়েছে। ধন্যবাদ।");
       onClose();
     } catch {
-      toast.error("Failed to submit report");
+      toast.error("রিপোর্ট জমা দেওয়া যায়নি");
     } finally {
       setLoading(false);
     }
@@ -55,7 +55,7 @@ export function ReportModal({ targetId, targetType, onClose }: Props) {
           </button>
         </div>
 
-        <p className="text-sm text-gray-500 mb-4">What is the issue?</p>
+        <p className="text-sm text-gray-500 mb-4">সমস্যাটি কী?</p>
 
         <div className="flex flex-col gap-2 mb-6">
           {REASONS.map((r) => (
@@ -75,7 +75,7 @@ export function ReportModal({ targetId, targetType, onClose }: Props) {
         </div>
 
         <div className="flex gap-3">
-          <Button variant="outline" onClick={onClose} className="flex-1 justify-center">Cancel</Button>
+          <Button variant="outline" onClick={onClose} className="flex-1 justify-center">বাতিল</Button>
           <Button
             variant="danger"
             loading={loading}
