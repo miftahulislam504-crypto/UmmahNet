@@ -88,11 +88,10 @@ export default function CircleDetailPage() {
           {/* Circle avatar */}
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center font-bold text-2xl mb-3
-                       ring-2 flex-shrink-0"
+                       ring-2 ring-[rgba(15,13,26,0.9)] flex-shrink-0"
             style={{
               background: "linear-gradient(135deg, rgba(124,58,237,0.3), rgba(159,103,250,0.2))",
               color:      "#c4b5fd",
-              ringColor:  "rgba(15,13,26,0.9)",
             }}
           >
             {circle.avatarPhoto
