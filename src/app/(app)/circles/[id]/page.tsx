@@ -194,8 +194,7 @@ export default function CircleDetailPage() {
           {members.slice(0, 12).map((m) => (
             <Link key={m.userId} href={`/profile/${m.userId}`}>
               <Avatar src={m.userPhoto} name={m.userName} size="sm"
-                className="ring-1 hover:ring-primary-500 transition-all"
-                style={{ "--tw-ring-color": "rgba(255,255,255,0.1)" } as React.CSSProperties}
+                className="ring-1 ring-white/10 hover:ring-primary-500 transition-all"
               />
             </Link>
           ))}
