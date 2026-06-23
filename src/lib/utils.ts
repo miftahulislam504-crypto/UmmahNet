@@ -27,7 +27,7 @@ export function getInitials(name: string): string {
 }
 
 // ─── Phase 4: Search token builder ───────────────────────────────────────────
-// Splits displayName + username into all possible prefix tokens so that
+// Splits displayName + optional username into all possible prefix tokens so that
 // Firestore `array-contains` can match any word-level prefix.
 // Works for both Bengali (Unicode word split) and English (Latin).
 //
@@ -36,9 +36,8 @@ export function getInitials(name: string): string {
 //   → ["মিফতাহুল", "ইসলাম", "মিফ", "মিফত", "মিফতা", ...,
 //      "miftahul", "islam", "mif", "mift", ...]
 //
-// We include both the full word AND every prefix of each word so that
-// the user can match with partial input like "মিফ" or "isla".
-export function buildSearchTokens(displayName: string, username: string): string[] {
+// username is optional — used for users; omit for circles/other entities.
+export function buildSearchTokens(displayName: string, username?: string): string[] {
   const tokenSet = new Set<string>();
 
   function addWordPrefixes(word: string) {
@@ -59,12 +58,14 @@ export function buildSearchTokens(displayName: string, username: string): string
     .filter(Boolean);
   nameWords.forEach(addWordPrefixes);
 
-  // Split username on underscores, dots, hyphens, spaces
-  const unameWords = username
-    .trim()
-    .split(/[\s_.\-]+/)
-    .filter(Boolean);
-  unameWords.forEach(addWordPrefixes);
+  // Split username on underscores, dots, hyphens, spaces (only if provided)
+  if (username) {
+    const unameWords = username
+      .trim()
+      .split(/[\s_.\-]+/)
+      .filter(Boolean);
+    unameWords.forEach(addWordPrefixes);
+  }
 
   return Array.from(tokenSet);
 }
