@@ -1,19 +1,16 @@
 "use client";
 
-import { useState, useRef }   from "react";
-import Image                   from "next/image";
-import { Plus, Loader2 }      from "lucide-react";
-import { StoryViewer }        from "@/components/stories/StoryViewer";
+import { useState, useRef } from "react";
+import Image                 from "next/image";
+import { Plus, Loader2 }    from "lucide-react";
+import { StoryViewer }      from "@/components/stories/StoryViewer";
 import { useStories, useCreateStory } from "@/hooks/useStories";
-import { useAuthStore }       from "@/store/authStore";
-import { cn }                 from "@/lib/utils";
+import { useAuthStore }     from "@/store/authStore";
+import { cn }               from "@/lib/utils";
 
-// ── Card size + overlapping avatar size ─────────────────────────────────────
-// The avatar's vertical CENTER sits exactly on the card's bottom edge:
-//   avatar wrapper -> absolute, top-full (= card's bottom line) + -translate-y-1/2
-const CARD_W = 96;   // card width (px)
-const CARD_H = 122;  // card height (px) — slightly taller than wide
-const AVA    = 40;   // avatar wrapper width/height (px), incl. ring padding
+const CARD_W = 88;
+const CARD_H = 116;
+const AVA    = 36;
 
 export function StoryBar() {
   const { user, profile }               = useAuthStore();
@@ -34,170 +31,160 @@ export function StoryBar() {
 
   return (
     <>
-      <div className="bg-white dark:bg-gray-900 px-3 py-3 border-b border-gray-100 dark:border-gray-800">
-        <div className="flex gap-3 overflow-x-auto scrollbar-hide">
+      {/* Glass story bar */}
+      <div
+        className="card px-3 py-3"
+        style={{ borderRadius: "1.25rem" }}
+      >
+        <div className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-1">
 
-          {/* ── Your Story / Add Story ── */}
-          {/* BUG FIX: previously the user's own group was filtered out of the
-              list entirely (return null), so a just-published story never
-              appeared anywhere — only the generic "+" button stayed visible.
-              Now: if the user has an active story, its latest cover shows
-              here and tapping it opens the viewer; the "+" badge always
-              opens the picker to add another. */}
+          {/* My story */}
           {(() => {
             const myIdx   = groups.findIndex((g) => g.authorId === user?.uid);
             const myGroup = myIdx >= 0 ? groups[myIdx] : null;
             const myCover = myGroup?.stories[myGroup.stories.length - 1]?.mediaUrl;
 
             return (
-              <div className="flex-shrink-0 flex flex-col items-center select-none" style={{ width: CARD_W }}>
+              <div className="flex-shrink-0 flex flex-col items-center" style={{ width: CARD_W }}>
                 <div className="relative" style={{ width: CARD_W }}>
-                  {/* Square card */}
+                  {/* Card */}
                   <button
                     onClick={() => {
                       if (myGroup) { setViewerGroup(myIdx); setViewerOpen(true); }
                       else fileRef.current?.click();
                     }}
-                    className={cn(
-                      "block w-full rounded-2xl overflow-hidden relative bg-gray-100 dark:bg-gray-800",
-                      myGroup ? "ring-2 ring-primary-500" : "ring-1 ring-gray-200 dark:ring-gray-700"
-                    )}
-                    style={{ height: CARD_H }}
+                    className="block w-full rounded-2xl overflow-hidden relative"
+                    style={{
+                      height:  CARD_H,
+                      background: "rgba(124,58,237,0.12)",
+                      border:  myGroup ? "2px solid #9f67fa" : "1px solid rgba(124,58,237,0.2)",
+                    }}
                   >
                     {myCover ? (
                       <Image src={myCover} alt="" fill className="object-cover" />
                     ) : profile.photoURL ? (
-                      <Image src={profile.photoURL} alt="" fill className="object-cover" />
+                      <Image src={profile.photoURL} alt="" fill className="object-cover opacity-60" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center
-                                      bg-gradient-to-br from-primary-100 to-primary-200
-                                      dark:from-gray-700 dark:to-gray-800" />
+                      <div
+                        className="w-full h-full"
+                        style={{ background: "linear-gradient(135deg, rgba(124,58,237,0.3) 0%, rgba(159,103,250,0.2) 100%)" }}
+                      />
                     )}
-                    <div className="absolute inset-0 bg-black/15" />
+                    <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.15)" }} />
                   </button>
 
-                  {/* "+" badge — always opens the picker to add a new story */}
+                  {/* Plus badge */}
                   <button
                     onClick={() => fileRef.current?.click()}
                     disabled={createStory.isPending}
                     className="absolute left-1/2 top-full -translate-x-1/2 -translate-y-1/2 z-10
-                               rounded-full p-[2px] bg-white dark:bg-gray-900 shadow"
-                    style={{ width: AVA, height: AVA }}
+                               rounded-full flex items-center justify-center"
+                    style={{
+                      width:      AVA,
+                      height:     AVA,
+                      background: "linear-gradient(135deg, #7c3aed 0%, #9f67fa 100%)",
+                      border:     "2px solid rgba(15,13,26,0.9)",
+                      boxShadow:  "0 0 10px rgba(124,58,237,0.4)",
+                    }}
                   >
-                    <div className="w-full h-full rounded-full bg-primary-600
-                                    flex items-center justify-center overflow-hidden">
-                      {createStory.isPending
-                        ? <Loader2 className="w-4 h-4 text-white animate-spin" />
-                        : <Plus className="w-4 h-4 text-white" strokeWidth={3} />
-                      }
-                    </div>
+                    {createStory.isPending
+                      ? <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+                      : <Plus    className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+                    }
                   </button>
                 </div>
 
-                {/* Label */}
-                <span
-                  className="mt-6 text-[11px] font-medium text-gray-700 dark:text-gray-300
-                             text-center leading-tight truncate"
-                  style={{ width: CARD_W }}
-                >
-                  {myGroup ? "আমার স্টোরি" : "স্টোরি যোগ করুন"}
+                <span className="mt-5 text-[10px] font-medium text-gray-400 text-center truncate"
+                  style={{ width: CARD_W }}>
+                  {myGroup ? "আমার স্টোরি" : "যোগ করুন"}
                 </span>
               </div>
             );
           })()}
 
           <input
-            ref={fileRef}
-            type="file"
-            accept="image/*,video/*"
-            className="hidden"
-            onChange={handleFile}
+            ref={fileRef} type="file" accept="image/*,video/*"
+            className="hidden" onChange={handleFile}
           />
 
-          {/* ── Loading skeletons ── */}
+          {/* Loading */}
           {loading && !error && Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="flex-shrink-0 flex flex-col items-center" style={{ width: CARD_W }}>
-              <div
-                className="rounded-2xl bg-gray-200 dark:bg-gray-700 animate-pulse"
-                style={{ width: CARD_W, height: CARD_H }}
-              />
-              <div className="w-12 h-2.5 mt-6 rounded bg-gray-200 dark:bg-gray-700 animate-pulse" />
+              <div className="skeleton rounded-2xl" style={{ width: CARD_W, height: CARD_H }} />
+              <div className="skeleton h-2 w-10 mt-5 rounded-full" />
             </div>
           ))}
 
-          {/* ── Story cards ── */}
+          {/* Story cards */}
           {!loading && !error && groups.map((group, idx) => {
             if (group.authorId === user?.uid) return null;
-            const hasNew  = group.hasUnviewed;
-            const cover   = group.stories[group.stories.length - 1]?.mediaUrl;
+            const hasNew = group.hasUnviewed;
+            const cover  = group.stories[group.stories.length - 1]?.mediaUrl;
 
             return (
               <button
                 key={group.authorId}
                 onClick={() => { setViewerGroup(idx); setViewerOpen(true); }}
-                className="flex-shrink-0 flex flex-col items-center select-none"
+                className="flex-shrink-0 flex flex-col items-center"
                 style={{ width: CARD_W }}
               >
                 <div className="relative" style={{ width: CARD_W }}>
-                  {/* Square card — latest story preview */}
+                  {/* Card */}
                   <div
-                    className={cn(
-                      "rounded-2xl overflow-hidden relative bg-gray-200 dark:bg-gray-700",
-                      hasNew
-                        ? "ring-2 ring-primary-500"
-                        : "ring-1 ring-gray-200 dark:ring-gray-700"
-                    )}
-                    style={{ width: CARD_W, height: CARD_H }}
+                    className="rounded-2xl overflow-hidden relative"
+                    style={{
+                      width:    CARD_W,
+                      height:   CARD_H,
+                      background: "rgba(255,255,255,0.05)",
+                      border:   hasNew
+                        ? "2px solid #9f67fa"
+                        : "1px solid rgba(255,255,255,0.08)",
+                    }}
                   >
                     {cover ? (
                       <Image src={cover} alt="" fill className="object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center
-                                      bg-gradient-to-br from-purple-400 to-pink-500
-                                      text-white font-bold text-2xl">
-                        {group.authorName?.charAt(0)}
+                      <div className="w-full h-full flex items-center justify-center"
+                        style={{ background: "linear-gradient(135deg, #7c3aed, #9f67fa)" }}>
+                        <span className="text-white font-bold text-xl">
+                          {group.authorName?.charAt(0)}
+                        </span>
                       </div>
                     )}
-                    <div className="absolute inset-0 bg-black/15" />
+                    <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.12)" }} />
                   </div>
 
-                  {/* Avatar — center point sits on the card's bottom edge */}
+                  {/* Avatar pill */}
                   <div
-                    className={cn(
-                      "absolute left-1/2 top-full -translate-x-1/2 -translate-y-1/2 z-10",
-                      "rounded-full p-[2px]",
-                      hasNew
-                        ? "bg-gradient-to-tr from-primary-500 via-purple-500 to-pink-500"
-                        : "bg-white dark:bg-gray-900"
-                    )}
-                    style={{ width: AVA, height: AVA }}
+                    className="absolute left-1/2 top-full -translate-x-1/2 -translate-y-1/2 z-10 rounded-full p-[2px]"
+                    style={{
+                      width:      AVA,
+                      height:     AVA,
+                      background: hasNew
+                        ? "linear-gradient(135deg, #7c3aed, #9f67fa)"
+                        : "rgba(15,13,26,0.9)",
+                      boxShadow:  hasNew ? "0 0 10px rgba(124,58,237,0.5)" : "none",
+                    }}
                   >
-                    <div className="w-full h-full rounded-full overflow-hidden
-                                    bg-gray-200 dark:bg-gray-700 ring-2 ring-white dark:ring-gray-900">
+                    <div className="w-full h-full rounded-full overflow-hidden"
+                      style={{ border: "1.5px solid rgba(15,13,26,0.9)" }}>
                       {group.authorPhoto ? (
-                        <Image
-                          src={group.authorPhoto}
-                          alt={group.authorName}
-                          width={AVA} height={AVA}
-                          className="object-cover w-full h-full"
-                        />
+                        <Image src={group.authorPhoto} alt={group.authorName}
+                          width={AVA} height={AVA} className="object-cover w-full h-full" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center
-                                        bg-gradient-to-br from-purple-400 to-pink-500
-                                        text-white font-bold text-sm">
-                          {group.authorName?.charAt(0)}
+                        <div className="w-full h-full flex items-center justify-center"
+                          style={{ background: "linear-gradient(135deg, #7c3aed, #9f67fa)" }}>
+                          <span className="text-white font-bold text-xs">
+                            {group.authorName?.charAt(0)}
+                          </span>
                         </div>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {/* Name */}
-                <span
-                  className="mt-6 text-[11px] font-medium text-gray-700 dark:text-gray-300
-                             text-center leading-tight truncate"
-                  style={{ width: CARD_W }}
-                >
+                <span className="mt-5 text-[10px] font-medium text-gray-400 text-center truncate"
+                  style={{ width: CARD_W }}>
                   {group.authorName.split(" ")[0]}
                 </span>
               </button>
@@ -206,14 +193,9 @@ export function StoryBar() {
         </div>
 
         {error && (
-          <div className="mt-2 rounded-xl bg-red-50 dark:bg-red-950/30 px-3 py-2">
-            <p className="text-[11px] font-medium text-red-600 dark:text-red-400 mb-1">
-              Stories লোড করা যায়নি — নিচের error থেকে কারণ দেখুন
-              (যদি একটা link থাকে, সেটাতে গিয়ে index তৈরি করুন):
-            </p>
-            <p className="text-[11px] text-red-500 break-all select-all font-mono">
-              {error}
-            </p>
+          <div className="mt-2 rounded-xl px-3 py-2"
+            style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
+            <p className="text-[11px] text-red-400 break-all font-mono">{error}</p>
           </div>
         )}
       </div>

@@ -1,81 +1,105 @@
 "use client";
 
-import Link from "next/link";
+import Link            from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Users, Plus, MessageCircle, Settings } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useConversations } from "@/hooks/useChat";
+import { Home, Users, PlusCircle, MessageCircle, User } from "lucide-react";
+import { useAuthStore }    from "@/store/authStore";
+import { cn }              from "@/lib/utils";
+
+const NAV_ITEMS = [
+  { href: "/",          icon: Home,          label: "Home"     },
+  { href: "/friends",   icon: Users,         label: "Friends"  },
+  { href: "/create-post", icon: PlusCircle,  label: "Create",  isCreate: true },
+  { href: "/messages",  icon: MessageCircle, label: "Messages" },
+  { href: "/profile",   icon: User,          label: "Profile", isDynamic: true },
+];
 
 export function BottomNav() {
-  const pathname = usePathname();
-  // Phase 5: show total unread message count on messages tab
-  const { totalUnread } = useConversations();
+  const pathname         = usePathname();
+  const { user, profile } = useAuthStore();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50
-                    bg-white dark:bg-gray-900
-                    border-t border-gray-100 dark:border-gray-800
-                    safe-area-bottom">
-      <div className="flex items-center justify-around h-16 px-2 max-w-lg mx-auto">
+    /* floating dock */
+    <nav
+      className="fixed bottom-3 inset-x-3 z-50 safe-area-bottom md:hidden"
+      aria-label="Bottom navigation"
+    >
+      <div
+        className="flex items-center justify-around px-2 py-1 rounded-2xl"
+        style={{
+          background:         "rgba(15,13,26,0.88)",
+          backdropFilter:     "blur(24px) saturate(180%)",
+          WebkitBackdropFilter: "blur(24px) saturate(180%)",
+          border:             "1px solid rgba(255,255,255,0.09)",
+          boxShadow:          "0 -1px 0 rgba(255,255,255,0.05), 0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(124,58,237,0.08)",
+        }}
+      >
+        {NAV_ITEMS.map(({ href, icon: Icon, label, isCreate, isDynamic }) => {
+          const resolvedHref = isDynamic && user ? `/profile/${user.uid}` : href;
+          const isActive = isDynamic
+            ? pathname.startsWith("/profile")
+            : href === "/"
+              ? pathname === "/"
+              : pathname.startsWith(href);
 
-        <NavTab href="/"        icon={Home}  label="হোম"    active={pathname === "/"} />
-        <NavTab href="/friends" icon={Users} label="বন্ধু"   active={pathname === "/friends"} />
+          if (isCreate) {
+            return (
+              <Link
+                key={href}
+                href={resolvedHref}
+                aria-label={label}
+                className="relative flex flex-col items-center justify-center p-2 group"
+              >
+                {/* glowing plus button */}
+                <span
+                  className="flex items-center justify-center w-11 h-11 rounded-2xl transition-all duration-300 group-active:scale-90"
+                  style={{
+                    background: "linear-gradient(135deg, #7c3aed 0%, #9f67fa 100%)",
+                    boxShadow:  "0 0 16px rgba(124,58,237,0.5), 0 4px 12px rgba(0,0,0,0.3)",
+                  }}
+                >
+                  <Icon className="w-5 h-5 text-white" />
+                </span>
+              </Link>
+            );
+          }
 
-        {/* Center + button → /create-post */}
-        <Link
-          href="/create-post"
-          aria-label="পোস্ট তৈরি করুন"
-          className="flex items-center justify-center
-                     w-12 h-12 rounded-2xl -mt-5
-                     bg-primary-600 hover:bg-primary-700
-                     text-white shadow-lg shadow-primary-600/40
-                     transition-all duration-200 active:scale-95 flex-shrink-0"
-        >
-          <Plus className="w-6 h-6 stroke-[2.5]" />
-        </Link>
+          return (
+            <Link
+              key={resolvedHref}
+              href={resolvedHref}
+              aria-label={label}
+              className="relative flex flex-col items-center justify-center p-2.5 group min-w-[44px]"
+            >
+              {/* Active pill indicator */}
+              {isActive && (
+                <span
+                  className="absolute inset-0 rounded-xl"
+                  style={{ background: "rgba(124,58,237,0.18)" }}
+                />
+              )}
 
-        {/* Messages tab with unread badge */}
-        <div className="relative">
-          <NavTab
-            href="/messages"
-            icon={MessageCircle}
-            label="বার্তা"
-            active={pathname === "/messages"}
-          />
-          {totalUnread > 0 && (
-            <span className="absolute -top-0.5 right-1 min-w-[16px] h-4 bg-red-500 text-white
-                             text-[9px] font-bold rounded-full flex items-center justify-center
-                             px-1 pointer-events-none">
-              {totalUnread > 9 ? "9+" : totalUnread}
-            </span>
-          )}
-        </div>
+              <Icon
+                className={cn(
+                  "relative w-[22px] h-[22px] transition-all duration-200",
+                  isActive
+                    ? "text-primary-400 drop-shadow-[0_0_8px_rgba(167,139,250,0.8)]"
+                    : "text-gray-500 group-hover:text-gray-300 group-active:scale-90"
+                )}
+                strokeWidth={isActive ? 2.2 : 1.8}
+              />
 
-        <NavTab href="/settings" icon={Settings} label="সেটিংস" active={pathname === "/settings"} />
+              {/* Active dot */}
+              {isActive && (
+                <span
+                  className="absolute bottom-1.5 w-1 h-1 rounded-full"
+                  style={{ background: "#9f67fa" }}
+                />
+              )}
+            </Link>
+          );
+        })}
       </div>
     </nav>
-  );
-}
-
-function NavTab({ href, icon: Icon, label, active }: {
-  href: string; icon: React.ElementType; label: string; active: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      className="flex flex-col items-center justify-center gap-0.5 w-14 h-full transition-colors"
-      aria-label={label}
-    >
-      <Icon className={cn(
-        "w-6 h-6 transition-all duration-200",
-        active ? "text-primary-600 stroke-[2.5]" : "text-gray-400 dark:text-gray-500 stroke-[1.8]"
-      )} />
-      <span className={cn(
-        "text-[10px] font-medium tracking-wide transition-colors",
-        active ? "text-primary-600" : "text-gray-400 dark:text-gray-500"
-      )}>
-        {label}
-      </span>
-    </Link>
   );
 }

@@ -19,29 +19,33 @@ import {
   type QueryDocumentSnapshot,
   type Unsubscribe,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase/config";
-import type { Post, Comment } from "@/types";
-import { createNotification } from "@/services/notificationService";
+import { db }                        from "@/lib/firebase/config";
+import type { Post, Comment, PostType } from "@/types";
+import { createNotification }        from "@/services/notificationService";
 import { uploadCompressedImage, COMPRESS_PRESETS } from "@/lib/firebase/storage";
 
 const PAGE_SIZE = 10;
 
-// ─── Create Post ──────────────────────────────────────────────────────────────
-// PHASE 7 FIX: images used to be converted to Base64 and stored inline in
-// the post document. A handful of photos could push a single post past
-// Firestore's 1MB document limit and made every feed page heavy to read.
-// Now each image is compressed client-side and uploaded to Firebase Storage
-// at posts/images/{postId}_{i}.jpg (rules already in storage.rules); only
-// the small https download URL is written to Firestore.
+// ─── Create Post (Phase 12: extended with new types) ─────────────────────────
 export async function createPost(
   authorId:    string,
   authorName:  string,
   authorPhoto: string | null | undefined,
   content:     string,
   mediaFiles:  File[],
-  visibility:  Post["visibility"] = "public"
+  visibility:  Post["visibility"] = "public",
+  // Phase 12 extras
+  options?: {
+    type?:          PostType;
+    pollOptions?:   string[];      // for "poll"
+    articleTitle?:  string;        // for "article"
+    threadId?:      string;        // for "thread" continuation
+    threadIndex?:   number;
+    quotedPostId?:  string;        // for "quote"
+    quotedContent?: string;
+    quotedAuthorName?: string;
+  }
 ): Promise<string> {
-  // Pre-generate the doc ID so uploaded image paths can reference it.
   const postRef = doc(collection(db, "posts"));
 
   const mediaUrls = await Promise.all(
@@ -50,24 +54,94 @@ export async function createPost(
     )
   );
 
-  const type: Post["type"] = mediaFiles.length > 0 ? "image" : "text";
+  // Auto-detect type if not supplied
+  let type: PostType = options?.type
+    ?? (mediaFiles.length > 0 ? "image" : "text");
 
-  await setDoc(postRef, {
+  const baseData: Record<string, unknown> = {
     authorId,
     authorName,
     authorPhoto:   authorPhoto ?? "",
     content:       content.trim(),
     mediaUrls,
     type,
-    likesCount:    0,
+    // Phase 12: benefitsCount replaces likesCount
+    benefitsCount: 0,
+    likesCount:    0,   // kept for backward compat
     commentsCount: 0,
     sharesCount:   0,
     visibility,
     createdAt: serverTimestamp(),
-  });
+  };
 
+  // Type-specific fields
+  if (type === "poll" && options?.pollOptions?.length) {
+    baseData.pollOptions = options.pollOptions.map((text, i) => ({
+      id: `opt_${i}`, text, votes: 0,
+    }));
+  }
+  if (type === "article" && options?.articleTitle) {
+    baseData.articleTitle = options.articleTitle;
+  }
+  if (type === "thread") {
+    baseData.threadId    = options?.threadId    ?? postRef.id;
+    baseData.threadIndex = options?.threadIndex ?? 1;
+  }
+  if (type === "quote" && options?.quotedPostId) {
+    baseData.quotedPostId      = options.quotedPostId;
+    baseData.quotedContent     = options.quotedContent     ?? "";
+    baseData.quotedAuthorName  = options.quotedAuthorName  ?? "";
+  }
+
+  await setDoc(postRef, baseData);
   await updateDoc(doc(db, "users", authorId), { postsCount: increment(1) });
   return postRef.id;
+}
+
+// ─── Create Thread (Phase 12) ─────────────────────────────────────────────────
+// Creates multiple connected posts sharing a threadId.
+export async function createThread(
+  authorId:    string,
+  authorName:  string,
+  authorPhoto: string,
+  parts:       string[],   // array of text content per thread post
+  visibility:  Post["visibility"] = "public"
+): Promise<string> {
+  if (parts.length === 0) return "";
+
+  // First post determines the threadId
+  const firstId = (doc(collection(db, "posts"))).id;
+  const batch   = writeBatch(db);
+
+  parts.forEach((content, i) => {
+    const ref = i === 0
+      ? doc(db, "posts", firstId)
+      : doc(collection(db, "posts"));
+
+    batch.set(ref, {
+      authorId,
+      authorName,
+      authorPhoto,
+      content:       content.trim(),
+      mediaUrls:     [],
+      type:          "thread",
+      threadId:      firstId,
+      threadIndex:   i + 1,
+      benefitsCount: 0,
+      likesCount:    0,
+      commentsCount: 0,
+      sharesCount:   0,
+      visibility,
+      createdAt:     serverTimestamp(),
+    });
+  });
+
+  batch.update(doc(db, "users", authorId), {
+    postsCount: increment(parts.length),
+  });
+
+  await batch.commit();
+  return firstId;
 }
 
 // ─── Delete Post ──────────────────────────────────────────────────────────────
@@ -78,64 +152,109 @@ export async function deletePost(postId: string, authorId: string): Promise<void
   await batch.commit();
 }
 
-// ─── Like / Unlike ────────────────────────────────────────────────────────────
-export async function toggleLike(postId: string, userId: string): Promise<boolean> {
-  const likeId  = `${postId}_${userId}`;
-  const likeRef = doc(db, "likes", likeId);
-  const snap    = await getDoc(likeRef);
+// ─── Benefit / Un-benefit (Phase 12: replaces Like) ──────────────────────────
+export async function toggleBenefit(postId: string, userId: string): Promise<boolean> {
+  // Store in "benefits" collection; also mirror to legacy "likes" for compat
+  const benefitId  = `${postId}_${userId}`;
+  const benefitRef = doc(db, "benefits", benefitId);
+  const snap       = await getDoc(benefitRef);
 
   const batch = writeBatch(db);
+
   if (snap.exists()) {
-    // Unlike — no notification needed
-    batch.delete(likeRef);
-    batch.update(doc(db, "posts", postId), { likesCount: increment(-1) });
+    // Remove benefit
+    batch.delete(benefitRef);
+    batch.update(doc(db, "posts", postId), {
+      benefitsCount: increment(-1),
+      likesCount:    increment(-1),
+    });
     await batch.commit();
     return false;
-  } else {
-    batch.set(likeRef, {
-      postId,
-      userId,
-      targetId:   postId,
-      targetType: "post",
-      createdAt:  serverTimestamp(),
-    });
-    batch.update(doc(db, "posts", postId), { likesCount: increment(1) });
-    await batch.commit();
+  }
 
-    // ── Phase 3: Notify post author ──────────────────────────────────────────
-    try {
-      const [postSnap, likerSnap] = await Promise.all([
-        getDoc(doc(db, "posts", postId)),
-        getDoc(doc(db, "users", userId)),
-      ]);
-      if (postSnap.exists()) {
-        const authorId  = (postSnap.data() as Post).authorId;
-        const likerName = likerSnap.exists()
-          ? (likerSnap.data() as { displayName: string }).displayName
-          : "কেউ একজন";
+  // Add benefit
+  batch.set(benefitRef, {
+    postId,
+    userId,
+    targetId:   postId,
+    targetType: "post",
+    createdAt:  serverTimestamp(),
+  });
+  batch.update(doc(db, "posts", postId), {
+    benefitsCount: increment(1),
+    likesCount:    increment(1),
+  });
+  await batch.commit();
+
+  // Notify post author
+  try {
+    const [postSnap, giverSnap] = await Promise.all([
+      getDoc(doc(db, "posts",  postId)),
+      getDoc(doc(db, "users",  userId)),
+    ]);
+    if (postSnap.exists()) {
+      const authorId  = (postSnap.data() as Post).authorId;
+      const giverName = giverSnap.exists()
+        ? (giverSnap.data() as { displayName: string }).displayName
+        : "কেউ একজন";
+      if (authorId !== userId) {
         await createNotification({
           userId:        authorId,
-          type:          "post_like",
+          type:          "post_benefit",
           actorId:       userId,
-          actorName:     likerName,
+          actorName:     giverName,
           referenceId:   postId,
           referenceType: "post",
         });
       }
-    } catch (err) {
-      console.error("toggleLike notification failed:", err);
     }
-
-    return true;
+  } catch (err) {
+    console.error("toggleBenefit notification failed:", err);
   }
+
+  return true;
 }
 
-export async function isLikedByUser(postId: string, userId: string): Promise<boolean> {
-  const snap = await getDoc(doc(db, "likes", `${postId}_${userId}`));
+// Legacy alias so old code still works
+export const toggleLike = toggleBenefit;
+
+export async function isBenefitedByUser(postId: string, userId: string): Promise<boolean> {
+  const snap = await getDoc(doc(db, "benefits", `${postId}_${userId}`));
   return snap.exists();
 }
+export const isLikedByUser = isBenefitedByUser;
 
-// ─── Comments ─────────────────────────────────────────────────────────────────
+// ─── Poll Vote (Phase 12) ─────────────────────────────────────────────────────
+export async function votePoll(
+  postId: string, userId: string, optionId: string
+): Promise<void> {
+  const voteRef = doc(db, "pollVotes", `${postId}_${userId}`);
+  const snap    = await getDoc(voteRef);
+  if (snap.exists()) return;  // already voted
+
+  const batch = writeBatch(db);
+  batch.set(voteRef, { postId, userId, optionId, createdAt: serverTimestamp() });
+
+  // Increment the option's vote count inside the post document
+  const postSnap = await getDoc(doc(db, "posts", postId));
+  if (postSnap.exists()) {
+    const post = postSnap.data() as Post;
+    const opts = (post.pollOptions ?? []).map((o) =>
+      o.id === optionId ? { ...o, votes: o.votes + 1 } : o
+    );
+    batch.update(doc(db, "posts", postId), { pollOptions: opts });
+  }
+  await batch.commit();
+}
+
+export async function getPollVote(
+  postId: string, userId: string
+): Promise<string | null> {
+  const snap = await getDoc(doc(db, "pollVotes", `${postId}_${userId}`));
+  return snap.exists() ? (snap.data().optionId as string) : null;
+}
+
+// ─── Comments / Reflections ───────────────────────────────────────────────────
 export async function addComment(
   postId:          string,
   authorId:        string,
@@ -144,7 +263,7 @@ export async function addComment(
   content:         string,
   parentCommentId: string | null = null
 ): Promise<string> {
-  const ref2 = await addDoc(collection(db, "comments"), {
+  const ref = await addDoc(collection(db, "comments"), {
     postId,
     authorId,
     authorName,
@@ -152,35 +271,51 @@ export async function addComment(
     content:         content.trim(),
     likesCount:      0,
     parentCommentId,
+    isAcceptedAnswer: false,
     createdAt:       serverTimestamp(),
   });
   await updateDoc(doc(db, "posts", postId), { commentsCount: increment(1) });
 
-  // ── Phase 3: Notify post author ──────────────────────────────────────────
   try {
     const postSnap = await getDoc(doc(db, "posts", postId));
     if (postSnap.exists()) {
       const postAuthorId = (postSnap.data() as Post).authorId;
-      await createNotification({
-        userId:        postAuthorId,
-        type:          "post_comment",
-        actorId:       authorId,
-        actorName:     authorName,
-        referenceId:   postId,
-        referenceType: "post",
-      });
+      if (postAuthorId !== authorId) {
+        await createNotification({
+          userId:        postAuthorId,
+          type:          "post_comment",
+          actorId:       authorId,
+          actorName:     authorName,
+          referenceId:   postId,
+          referenceType: "post",
+        });
+      }
     }
   } catch (err) {
     console.error("addComment notification failed:", err);
   }
 
-  return ref2.id;
+  return ref.id;
 }
 
 export async function deleteComment(commentId: string, postId: string): Promise<void> {
   const batch = writeBatch(db);
   batch.delete(doc(db, "comments", commentId));
   batch.update(doc(db, "posts", postId), { commentsCount: increment(-1) });
+  await batch.commit();
+}
+
+// Phase 12: Mark best answer for Question posts
+export async function markAcceptedAnswer(
+  commentId: string, postId: string
+): Promise<void> {
+  const batch = writeBatch(db);
+  // Clear any existing accepted answer
+  const existing = await getDocs(
+    query(collection(db, "comments"), where("postId", "==", postId), where("isAcceptedAnswer", "==", true))
+  );
+  existing.docs.forEach((d) => batch.update(d.ref, { isAcceptedAnswer: false }));
+  batch.update(doc(db, "comments", commentId), { isAcceptedAnswer: true });
   await batch.commit();
 }
 
@@ -200,23 +335,11 @@ export function subscribeToComments(
   );
 }
 
-// ─── Friend Feed ──────────────────────────────────────────────────────────────
-// BUG 3 FIX: the feed showed ALL public posts from everyone on the platform.
-// A social network feed should only show posts from people you follow/friend.
-//
-// Firestore doesn't support JOIN queries, so we:
-//   1. Load the caller's friend UIDs from friendships collection (both user1
-//      and user2 directions), add self UID so own posts also appear.
-//   2. Use `where("authorId", "in", [...])` — Firestore supports up to 30
-//      values per `in` clause. For > 29 friends we chunk into multiple queries
-//      and merge client-side (same pattern as subscribeToStories).
-//   3. Filter visibility: friends see "public" + "friends" posts from each other.
-//      Strangers' posts never appear (they're excluded by authorId filter).
+// ─── Feeds ────────────────────────────────────────────────────────────────────
 export async function getFriendFeed(
   myUid:   string,
   lastDoc?: QueryDocumentSnapshot
 ): Promise<{ posts: (Post & { id: string })[]; lastDoc: QueryDocumentSnapshot | null }> {
-  // Step 1: collect friend UIDs
   const [snap1, snap2] = await Promise.all([
     getDocs(query(collection(db, "friendships"), where("user1", "==", myUid))),
     getDocs(query(collection(db, "friendships"), where("user2", "==", myUid))),
@@ -227,13 +350,9 @@ export async function getFriendFeed(
   ];
   const authorIds = Array.from(new Set([myUid, ...friendIds]));
 
-  // Step 2: chunk into groups of 30 (Firestore "in" limit)
   const chunks: string[][] = [];
-  for (let i = 0; i < authorIds.length; i += 30) {
-    chunks.push(authorIds.slice(i, i + 30));
-  }
+  for (let i = 0; i < authorIds.length; i += 30) chunks.push(authorIds.slice(i, i + 30));
 
-  // Step 3: query each chunk
   const allResults = await Promise.all(
     chunks.map((chunk) => {
       const c: any[] = [
@@ -247,10 +366,14 @@ export async function getFriendFeed(
     })
   );
 
-  // Merge, sort desc, apply banned filter, take PAGE_SIZE
   const merged = allResults
     .flatMap((s) => s.docs.map((d) => ({ id: d.id, ...d.data() } as Post & { id: string })))
     .filter((p) => !p.authorBanned)
+    // Phase 12: map old likesCount → benefitsCount for legacy posts
+    .map((p) => ({
+      ...p,
+      benefitsCount: p.benefitsCount ?? p.likesCount ?? 0,
+    }))
     .sort((a, b) => {
       const ta = (a.createdAt as any)?.toMillis?.() ?? 0;
       const tb = (b.createdAt as any)?.toMillis?.() ?? 0;
@@ -263,13 +386,7 @@ export async function getFriendFeed(
     lastDoc: merged.length > 0 ? (allResults[0]?.docs.at(-1) ?? null) : null,
   };
 }
-// PHASE 6 FIX: posts from accounts an admin has banned are filtered out
-// client-side via the denormalized `authorBanned` flag (set/cleared by
-// adminService.setBanStatus). Most posts don't have this field at all, and
-// a Firestore `!=` query would exclude *those* too — so this stays a
-// client-side filter rather than a query constraint. As a result a page can
-// occasionally come back with fewer than PAGE_SIZE posts; acceptable for a
-// moderation edge case.
+
 export async function getPublicFeed(
   lastDoc?: QueryDocumentSnapshot
 ): Promise<{ posts: (Post & { id: string })[]; lastDoc: QueryDocumentSnapshot | null }> {
@@ -284,21 +401,12 @@ export async function getPublicFeed(
   return {
     posts: snap.docs
       .map((d) => ({ id: d.id, ...d.data() } as Post & { id: string }))
-      .filter((p) => !p.authorBanned),
+      .filter((p) => !p.authorBanned)
+      .map((p) => ({ ...p, benefitsCount: p.benefitsCount ?? p.likesCount ?? 0 })),
     lastDoc: snap.docs.at(-1) ?? null,
   };
 }
 
-// ─── User Posts ───────────────────────────────────────────────────────────────
-// PHASE 6 FIX: previously this returned EVERY post by `uid` regardless of
-// `visibility` — opening anyone's profile showed their "friends" and
-// "private" posts too (the privacy leak originally flagged for Phase 2).
-// `viewerRelation` now narrows the query:
-//   "owner"    — viewing your own profile        → all posts
-//   "friend"   — viewer is friends with author   → public + friends
-//   "stranger" — anyone else (default)           → public only
-// Requires the composite index {authorId ASC, visibility ASC, createdAt DESC}
-// added to firestore.indexes.json for the "friend"/"stranger" cases.
 export async function getUserPosts(
   uid:            string,
   lastDoc?:       QueryDocumentSnapshot,
@@ -311,19 +419,33 @@ export async function getUserPosts(
   } else if (viewerRelation === "stranger") {
     constraints.push(where("visibility", "==", "public"));
   }
-  // "owner": no visibility constraint — sees everything, including private.
 
   constraints.push(orderBy("createdAt", "desc"), limit(PAGE_SIZE));
   if (lastDoc) constraints.push(startAfter(lastDoc));
 
   const snap = await getDocs(query(collection(db, "posts"), ...constraints));
   return {
-    posts:   snap.docs.map((d) => ({ id: d.id, ...d.data() } as Post & { id: string })),
+    posts:   snap.docs
+      .map((d) => ({ id: d.id, ...d.data() } as Post & { id: string }))
+      .map((p) => ({ ...p, benefitsCount: p.benefitsCount ?? p.likesCount ?? 0 })),
     lastDoc: snap.docs.at(-1) ?? null,
   };
 }
 
-// ─── Realtime feed listener ───────────────────────────────────────────────────
+// Phase 12: Fetch all posts in a thread
+export async function getThreadPosts(
+  threadId: string
+): Promise<(Post & { id: string })[]> {
+  const snap = await getDocs(
+    query(
+      collection(db, "posts"),
+      where("threadId", "==", threadId),
+      orderBy("threadIndex", "asc")
+    )
+  );
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Post & { id: string }));
+}
+
 export function subscribeToFeed(
   callback: (posts: (Post & { id: string })[]) => void
 ): Unsubscribe {
@@ -337,7 +459,8 @@ export function subscribeToFeed(
     callback(
       snap.docs
         .map((d) => ({ id: d.id, ...d.data() } as Post & { id: string }))
-        .filter((p) => !p.authorBanned) // PHASE 6: hide banned authors' posts
+        .filter((p) => !p.authorBanned)
+        .map((p) => ({ ...p, benefitsCount: p.benefitsCount ?? p.likesCount ?? 0 }))
     )
   );
 }
