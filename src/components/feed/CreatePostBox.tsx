@@ -1,4 +1,5 @@
 "use client";
+import React from "react";
 
 import { useState, useRef } from "react";
 import { ImageIcon, X, Globe, Users, Lock, ChevronDown, Loader2 } from "lucide-react";

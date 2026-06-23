@@ -1,11 +1,13 @@
+"use client";
+import React    from "react";
 import { cn }      from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "ghost" | "outline" | "danger";
   size?:    "sm" | "md" | "lg";
   loading?: boolean;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 const variants: Record<NonNullable<ButtonProps["variant"]>, string> = {
@@ -15,7 +17,7 @@ const variants: Record<NonNullable<ButtonProps["variant"]>, string> = {
   danger:  "text-white font-semibold px-5 py-2.5 rounded-xl transition-all duration-200 active:scale-95 disabled:opacity-50",
 };
 
-const dangerStyle = {
+const dangerStyle: React.CSSProperties = {
   background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
 };
 

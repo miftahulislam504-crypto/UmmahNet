@@ -1,4 +1,5 @@
 "use client";
+import React from "react";
 
 import { useState, useRef } from "react";
 import { X, Camera } from "lucide-react";

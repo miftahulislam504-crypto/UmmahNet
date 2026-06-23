@@ -1,4 +1,5 @@
 "use client";
+import React from "react";
 
 import { useState, useRef, useEffect } from "react";
 import { ArrowLeft, Send, ImageIcon, Loader2, X, CheckCheck, Check } from "lucide-react";

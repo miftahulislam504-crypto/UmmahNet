@@ -1,3 +1,4 @@
+import React from "react";
 import { Navbar }       from "@/components/layout/Navbar";
 import { BottomNav }    from "@/components/layout/BottomNav";
 import { LeftSidebar }  from "@/components/layout/LeftSidebar";
