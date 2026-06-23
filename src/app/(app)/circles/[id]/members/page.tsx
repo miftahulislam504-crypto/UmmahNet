@@ -43,7 +43,7 @@ export default function CircleMembersPage() {
       </div>
 
       {/* Members list */}
-      <div className="card divide-y" style={{ divideColor: "rgba(255,255,255,0.06)" }}>
+      <div className="card divide-y divide-white/[0.06]">
         {loading && [1,2,3,4].map((i) => (
           <div key={i} className="flex items-center gap-3 px-4 py-3">
             <div className="skeleton w-10 h-10 rounded-full" />
