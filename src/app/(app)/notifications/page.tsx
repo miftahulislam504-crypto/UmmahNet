@@ -11,11 +11,13 @@ const typeConfig: Record<
   Notification["type"],
   { icon: typeof Bell; color: string; label: string }
 > = {
-  friend_request:          { icon: UserPlus,    color: "bg-primary-500", label: "আপনাকে বন্ধুত্বের অনুরোধ পাঠিয়েছে" },
-  friend_request_accepted: { icon: UserCheck,   color: "bg-emerald-500", label: "আপনার বন্ধুত্বের অনুরোধ গ্রহণ করেছে" },
-  post_like:               { icon: Heart,       color: "bg-red-500",     label: "আপনার পোস্টে লাইক দিয়েছে" },
-  post_comment:            { icon: MessageCircle, color: "bg-green-500", label: "আপনার পোস্টে মন্তব্য করেছে" },
-  message:                 { icon: MessageCircle, color: "bg-blue-500",  label: "আপনাকে একটি বার্তা পাঠিয়েছে" },
+  friend_request:          { icon: UserPlus,      color: "bg-primary-500", label: "আপনাকে বন্ধুত্বের অনুরোধ পাঠিয়েছে" },
+  friend_request_accepted: { icon: UserCheck,     color: "bg-emerald-500", label: "আপনার বন্ধুত্বের অনুরোধ গ্রহণ করেছে" },
+  post_like:               { icon: Heart,         color: "bg-red-500",     label: "আপনার পোস্টে লাইক দিয়েছে" },
+  post_benefit:            { icon: Heart,         color: "bg-yellow-500",  label: "আপনার পোস্ট থেকে উপকৃত হয়েছে" },
+  post_comment:            { icon: MessageCircle, color: "bg-green-500",  label: "আপনার পোস্টে মন্তব্য করেছে" },
+  post_answer:             { icon: CheckCheck,    color: "bg-emerald-600", label: "আপনার উত্তর গ্রহণ করা হয়েছে" },
+  message:                 { icon: MessageCircle, color: "bg-blue-500",   label: "আপনাকে একটি বার্তা পাঠিয়েছে" },
 };
 
 export default function NotificationsPage() {

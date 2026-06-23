@@ -69,11 +69,11 @@ export function CommentSection({ postId, isQuestion = false, isOwner = false }: 
               key={comment.id}
               className={cn(
                 "flex items-start gap-2.5 group rounded-2xl p-2 -mx-2 transition-colors",
-                accepted && "ring-1"
+                accepted && "ring-1 ring-emerald-400/30"
               )}
               style={
                 accepted
-                  ? { background: "rgba(52,211,153,0.06)", ringColor: "rgba(52,211,153,0.3)" }
+                  ? { background: "rgba(52,211,153,0.06)" }
                   : undefined
               }
             >
